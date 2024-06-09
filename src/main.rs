@@ -71,6 +71,28 @@ fn find_task(name_of_task : &str, path_to_file : &str, path : bool) -> Option<To
 
 }
 
+fn change_importance(new_importance : i32, name_of_task : &str, path_to_file : &str, path: bool) {
+
+    let mut list = match read_and_return(path_to_file, path) {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Could not read the file due to {}", e);
+            return
+        }
+    };
+
+    for mut task in &mut list {
+        if task.get_task().trim() == name_of_task {
+            task.change_importance(new_importance);
+        }
+    }
+
+    if let Err(e) = write_file(&mut list, path_to_file) {
+        eprintln!("Could not write to file: {}. Error: {}", path_to_file, e);
+    }
+
+}
+
 fn parse_commands(args : &[String]) -> &str {
     let command = &args[1];
 
@@ -86,7 +108,7 @@ fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path :
         match command {
             "list" => {
                 list_tasks(file_path, path).expect("Could not get data from the file.");
-                break;
+                break
             }
             "add" => {
                 println!("What task would you like to add?");
@@ -119,7 +141,7 @@ fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path :
 
                 if input.trim() == "exit" || input.trim() == "e" {
                     write_file(&mut list, file_path).expect("Could not parse the file");
-                    break;
+                    break
                 }
 
             }
@@ -136,9 +158,14 @@ fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path :
                 remove: Removes a task from your list. All tasks marked completed are automatically
                 removed when the program exits. However, you can preemptively remove tasks if you'd
                 like!
+
+                importance: Allows you to modify the importance of your tasks. You can change their
+                importance level from an integer between 1 and 4! This will be helpful when you want
+                to filter tasks, but some tasks are no longer as urgent.
+
                 ");
 
-                break;
+                break
 
             }
             "remove" => {
@@ -146,9 +173,19 @@ fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path :
                 let task_to_remove = input().expect("Couldn't get user input");
 
                 remove_task(task_to_remove.trim(), file_path, path);
-                break;
+                break
 
             },
+            "importance" => {
+                println!("What task would you like to update?");
+                let task = input().unwrap();
+
+                println!("What level of importance would you like to change your task to? (1 - 4)");
+                let new_importance = read!();
+
+                change_importance(new_importance, task.trim(), file_path, path);
+                break
+            }
             _ => {
                 panic!("NO FEATURES HERE!!!! ABORT, ABORT! TO LAZY TO PROPERLY HANDLE!");
             }
@@ -157,8 +194,6 @@ fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path :
 }
 
 fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
-
-    let mut data = String::new();
 
     let existing_tasks = list.clone();
 

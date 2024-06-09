@@ -38,7 +38,7 @@ pub mod list {
         }
 
         pub fn change_importance(&mut self, new_value : i32) -> i32 {
-            if new_value > 0 || new_value < 4 {
+            if new_value < 1 || new_value > 4 {
                 panic!("Value must be higher than 0 and lower than 4.");
             }
 
