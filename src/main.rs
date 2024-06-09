@@ -1,24 +1,22 @@
-use std::{env, fs, io};
+use std::{env, io};
 use text_io::read;
 use list::list::Todo;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{ Read, Write};
 use std::fs::OpenOptions;
 use std::path::Path;
-use std::process::Output;
-use serde::Serialize;
 
 fn main() {
     let mut todo_list : Vec<Todo> = vec![];
 
     let path = Path::exists("todo_list.json".as_ref());
-    let file = "todo_list.json";
+    let file_path = "todo_list.json";
 
     let args : Vec<String> = env::args().collect();
 
     let command = parse_commands(&args);
 
-    handle_command(command, &mut todo_list, path, file);
+    handle_command(command, &mut todo_list, file_path, path);
 
 }
 
@@ -38,23 +36,13 @@ fn parse_commands(args : &[String]) -> &str {
 
 }
 
-fn handle_command(command : &str, todo_list: &mut Vec<Todo>, path: bool, file : &str) {
+fn handle_command(command : &str, todo_list: &mut Vec<Todo>, file_path : &str, path : bool) {
 
     let mut list = todo_list;
 
     loop {
         match command {
             "list" => {
-                let list = read_file().unwrap();
-
-                for task in 0..list.len() {
-                    println!("Task: {}, Completed: {}, Importance: {}",
-                             list[task].get_task().replace("\n", ""),
-                             list[task].get_status(),
-                             list[task].get_importance());
-                }
-
-                break;
 
             }
             "add" => {
@@ -84,17 +72,11 @@ fn handle_command(command : &str, todo_list: &mut Vec<Todo>, path: bool, file : 
                 add_to_list(create_task(task, importance), &mut list);
 
                 println!("Would you like to add a new task or exit? (add/exit): ");
-                let input = input();
+                let input = input().expect("Could not unwrap String");
 
-                if input.unwrap().trim() == "exit" {
-
-                    if !path {
-                        write_file(list).expect("Failed to write to file");
-                        break;
-                    }
-
-                } else {
-                    update_file(file, list).unwrap();
+                if input.trim() == "exit" || input.trim() == "e" {
+                    write_file(list, file_path, path).expect("Could not parse the file");
+                    break;
                 }
 
             }
@@ -121,11 +103,34 @@ fn handle_command(command : &str, todo_list: &mut Vec<Todo>, path: bool, file : 
     }
 }
 
-fn write_file(file : &mut Vec<Todo>) -> Result<(), io::Error> {
+fn write_file(list : &mut Vec<Todo>, file_path : &str, path : bool) -> Result<(), io::Error> {
 
-    let serialized_data = serde_json::to_string(&file)?;
+    let mut data = String::new();
+    let mut existing_tasks : Vec<Todo> = Vec::new();
+    
+    if path {
+        let mut open_file = File::open(file_path)?;
+        open_file.read_to_string(&mut data)?;
 
-    let mut open_file = File::create("todo_list.json")?;
+        match serde_json::from_str(&data) {
+            Ok(tasks) => existing_tasks = tasks,
+            Err(e) => {
+                if e.classify() != serde_json::error::Category::Eof {
+                    return Err(e.into());
+                }
+            }
+        }
+    }
+
+    existing_tasks.append(list);
+
+    let serialized_data = serde_json::to_string_pretty(&existing_tasks)?;
+
+    let mut open_file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(file_path)?;
 
     if let Err(e) = writeln!(open_file, "{}", serialized_data) {
         eprintln!("Couldn't write to file: {}", e);
@@ -135,42 +140,9 @@ fn write_file(file : &mut Vec<Todo>) -> Result<(), io::Error> {
 
 }
 
-fn read_file() -> Result<Vec<Todo>, io::Error> {
-    let mut file = File::open("todo_list.json")?;
+/*fn read_file(list : Vec<Todo> ,path : bool) {
 
-    let mut contents : String = String::new();
-    file.read_to_string(&mut contents)?;
-
-    let todo_list : Vec<Todo> = serde_json::from_str(&contents)?;
-
-    Ok(todo_list)
-
-}
-
-fn update_file(filename : &str, new_data : &mut Vec<Todo>) -> Result<(), Box<dyn std::error::Error>> {
-    let prev_content = fs::read_to_string(filename)?;
-
-    let mut data = if !prev_content.is_empty() {
-        serde_json::from_str(&prev_content)?
-    } else {
-        serde_json::Value::Object(serde_json::Map::new())
-    };
-
-    if let Some(obj) = data.as_object_mut() {
-        for (key, value) in new_data.as_object().expect("New data must be an object") {
-            obj.insert(key.clone(), value.clone());
-        }
-    } else {
-        return Err(Box::new(serde_json::Error::InvalidData("File must contain a JSON object")));
-    }
-
-    let output = serde_json::to_string_pretty(&data)?;
-
-    fs::write(filename, output)?;
-
-    Ok(())
-
-}
+}*/
 
 fn input() -> Option<String> {
     let mut input = String::new();
