@@ -1,0 +1,10 @@
+[package]
+name = "CommandLineTodoList"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+text_io = "0.1.12"
+list = {path = "list"}
+serde = {version = "1.0.203", features = ["serde_derive"]}
+serde_json = "1.0.117"
