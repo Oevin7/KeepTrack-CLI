@@ -17,12 +17,8 @@ pub mod list {
             }
         }
 
-        pub fn mark_complete(&mut self) {
-            self.is_completed = true;
-        }
-
-        pub fn mark_incomplete(&mut self) {
-            self.is_completed = false;
+        pub fn change_status(&mut self) {
+            self.is_completed = !self.is_completed
         }
 
         pub fn get_task(&self) -> &str {

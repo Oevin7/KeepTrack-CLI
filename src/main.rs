@@ -20,10 +20,12 @@ fn main() {
 
 }
 
+//Adds tasks to the list
 fn add_to_list(task : Todo, list: &mut Vec<Todo>) {
     list.push(task);
 }
 
+//Removes tasks from the list
 fn remove_task(task_to_remove : &str, path_to_file : &str, path : bool) {
 
     let mut list = match read_and_return(path_to_file, path) {
@@ -46,11 +48,34 @@ fn remove_task(task_to_remove : &str, path_to_file : &str, path : bool) {
 
 }
 
+//Marks a task as completed
+fn mark_completed(task_to_complete : &str, path_to_file : &str, path : bool) {
+    let mut list = match read_and_return(path_to_file, path) {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Could not read the file due to {}", e);
+            return
+        }
+    };
+
+    for mut task in &mut list {
+        if task.get_task().trim() == task_to_complete {
+            task.change_status();
+        }
+    }
+
+    if let Err(e) = write_file(&mut list, path_to_file) {
+        eprintln!("Could not write to file: {}. Error: {}", path_to_file, e);
+    }
+}
+
+//Creates a new task when one is added
 fn create_task(task : &str, importance : i32) -> Todo {
     let new_task = Todo::new(task.parse().unwrap(), false, importance);
     new_task
 }
 
+//Finds a task in the list. Used to aid the other functions in editing the list
 fn find_task(name_of_task : &str, path_to_file : &str, path : bool) -> Option<Todo> {
 
     let mut task_to_return = None;
@@ -71,6 +96,7 @@ fn find_task(name_of_task : &str, path_to_file : &str, path : bool) -> Option<To
 
 }
 
+//Changes the importance of a task
 fn change_importance(new_importance : i32, name_of_task : &str, path_to_file : &str, path: bool) {
 
     let mut list = match read_and_return(path_to_file, path) {
@@ -93,6 +119,7 @@ fn change_importance(new_importance : i32, name_of_task : &str, path_to_file : &
 
 }
 
+//Parses the commands to later handle the input
 fn parse_commands(args : &[String]) -> &str {
     let command = &args[1];
 
@@ -100,6 +127,7 @@ fn parse_commands(args : &[String]) -> &str {
 
 }
 
+//Handles the commands that were parsed
 fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path : bool) {
 
     let mut list = todo_list;
@@ -186,6 +214,13 @@ fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path :
                 change_importance(new_importance, task.trim(), file_path, path);
                 break
             }
+            "status" => {
+                println!("What task do you need to change the status(importance) of?");
+                let task = input().unwrap();
+
+                mark_completed(task.trim(), file_path, path);
+                break
+            }
             _ => {
                 panic!("NO FEATURES HERE!!!! ABORT, ABORT! TO LAZY TO PROPERLY HANDLE!");
             }
@@ -193,6 +228,7 @@ fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path :
     }
 }
 
+//Writes the new/updated list to a new or existing file
 fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
 
     let existing_tasks = list.clone();
@@ -213,6 +249,7 @@ fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
 
 }
 
+//Lists the tasks that are on the list
 fn list_tasks(path_to_file : &str, path : bool) -> Result<(), io::Error> {
 
     let mut file : File;
@@ -236,6 +273,7 @@ fn list_tasks(path_to_file : &str, path : bool) -> Result<(), io::Error> {
 
 }
 
+//Reads and returns the list from the file
 fn read_and_return(path_to_file : &str, path : bool) -> Result<Vec<Todo>, io::Error> {
     let mut file : File;
 
@@ -251,6 +289,7 @@ fn read_and_return(path_to_file : &str, path : bool) -> Result<Vec<Todo>, io::Er
 
 }
 
+//Accepts user input when the read!() macro won't work
 fn input() -> Option<String> {
     let mut input = String::new();
 
