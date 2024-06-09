@@ -158,8 +158,6 @@ fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path :
 
 fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
 
-    let mut data = String::new();
-
     let existing_tasks = list.clone();
 
     let serialized_data = serde_json::to_string_pretty(&existing_tasks)?;
