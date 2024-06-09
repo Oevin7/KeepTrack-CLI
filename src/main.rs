@@ -7,7 +7,7 @@ use std::fs::OpenOptions;
 use std::path::Path;
 
 fn main() {
-    let mut todo_list : Vec<Todo> = vec![];
+    let todo_list : Vec<Todo> = vec![];
 
     let path = Path::exists("todo_list.json".as_ref());
     let file_path = "todo_list.json";
@@ -16,7 +16,7 @@ fn main() {
 
     let command = parse_commands(&args);
 
-    handle_command(command, &mut todo_list, file_path, path);
+    handle_command(command, todo_list, file_path, path);
 
 }
 
@@ -24,9 +24,29 @@ fn add_to_list(task : Todo, list: &mut Vec<Todo>) {
     list.push(task);
 }
 
-fn create_task(task : String, importance : i32) -> Todo {
-    let new_task = Todo::new(task, false, importance);
+fn create_task(task : &str, importance : i32) -> Todo {
+    let new_task = Todo::new(task.parse().unwrap(), false, importance);
     new_task
+}
+
+fn find_task(name_of_task : &str, path_to_file : &str, path : bool) -> Option<Todo> {
+
+    let mut task_to_return = None;
+
+    let tasks = match read_and_return(path_to_file, path) {
+        Ok(data) => data,
+        Err(e) => panic!("Could not read the file due to {}", e),
+    };
+
+    for task in tasks {
+        if name_of_task == task.get_task().trim() {
+            task_to_return = Some(task);
+            break;
+        }
+    }
+
+    task_to_return
+
 }
 
 fn parse_commands(args : &[String]) -> &str {
@@ -36,14 +56,16 @@ fn parse_commands(args : &[String]) -> &str {
 
 }
 
-fn handle_command(command : &str, todo_list: &mut Vec<Todo>, file_path : &str, path : bool) {
+fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path : bool) {
 
     let mut list = todo_list;
 
     loop {
         match command {
             "list" => {
-
+                let list_ref = &list;
+                list_tasks(file_path, path).expect("Could not get data from the file.");
+                break;
             }
             "add" => {
                 println!("What task would you like to add?");
@@ -69,13 +91,13 @@ fn handle_command(command : &str, todo_list: &mut Vec<Todo>, file_path : &str, p
                     }
                 }
 
-                add_to_list(create_task(task, importance), &mut list);
+                add_to_list(create_task(task.trim(), importance), &mut list);
 
                 println!("Would you like to add a new task or exit? (add/exit): ");
                 let input = input().expect("Could not unwrap String");
 
                 if input.trim() == "exit" || input.trim() == "e" {
-                    write_file(list, file_path, path).expect("Could not parse the file");
+                    write_file(&mut list, file_path, path).expect("Could not parse the file");
                     break;
                 }
 
@@ -95,10 +117,26 @@ fn handle_command(command : &str, todo_list: &mut Vec<Todo>, file_path : &str, p
                 break;
 
             }
-            _ => {
-                println!("Nothing here yet! These features will be implemented in the future.");
-                break;
+            "find" => {
+                loop {
+                    println!("What task would you like to find?");
+                    let task_to_find = input().unwrap();
+
+                    let task = find_task(task_to_find.trim(), file_path, path);
+
+                    if task.is_none() {
+                        println!("That task was not found in the list. Please try again!");
+                    } else {
+                        let data_in_task = task.unwrap();
+                        println!("{:?}", data_in_task.get_task().trim());
+                        break
+                    }
+                    break
+                }
             },
+            _ => {
+                panic!("NO FEATURES HERE!!!! ABORT, ABORT! TO LAZY TO PROPERLY HANDLE!");
+            }
         }
     }
 }
@@ -140,9 +178,43 @@ fn write_file(list : &mut Vec<Todo>, file_path : &str, path : bool) -> Result<()
 
 }
 
-/*fn read_file(list : Vec<Todo> ,path : bool) {
+fn list_tasks(path_to_file : &str, path : bool) -> Result<(), io::Error> {
 
-}*/
+    let mut file : File;
+
+    if !path {
+        panic!("File does not exist.");
+    }
+
+    file = File::open(&path_to_file)?;
+
+    let tasks : Vec<Todo> = serde_json::from_reader(file)?;
+
+    for task in 0..tasks.len() {
+        println!("Task: {}, Completed: {}, Importance: {} \n",
+                 tasks[task].get_task().replace("\n", ""),
+                 tasks[task].get_status(),
+                 tasks[task].get_importance());
+    }
+
+    Ok(())
+
+}
+
+fn read_and_return(path_to_file : &str, path : bool) -> Result<Vec<Todo>, io::Error> {
+    let mut file : File;
+
+    if !path {
+        panic!("File does not exist.");
+    }
+
+    file = File::open(&path_to_file)?;
+
+    let tasks : Vec<Todo> = serde_json::from_reader(file)?;
+
+    Ok(tasks)
+
+}
 
 fn input() -> Option<String> {
     let mut input = String::new();
