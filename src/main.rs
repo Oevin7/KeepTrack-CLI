@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::{ Read, Write};
 use std::fs::OpenOptions;
 use std::path::Path;
+use colored::Colorize;
 
 fn main() {
     let mut todo_list : Vec<Todo> = vec![];
@@ -13,6 +14,10 @@ fn main() {
 
     let path = Path::exists("todo_list.json".as_ref());
     let file_path = "todo_list.json";
+
+    if !path {
+        File::create(file_path).unwrap();
+    }
 
     let args : Vec<String> = env::args().collect();
 
@@ -98,6 +103,32 @@ fn find_task(name_of_task : &str, path_to_file : &str, path : bool) -> Option<To
 
 }
 
+fn filter_tasks_by_importance(importance : i32, path_to_file : &str, path : bool) {
+    let mut list = match read_and_return(path_to_file, path) {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Could not read the file due to {}", e);
+            return
+        }
+    };
+
+    let mut filtered_list= vec![];
+
+    for task in &mut list {
+        if task.get_importance() == importance {
+            filtered_list.push(task)
+        }
+    }
+
+    for data in 0..filtered_list.len() {
+        println!("Task: {}, Completed: {}, Importance: {} \n",
+                 filtered_list[data].get_task().replace("\n", ""),
+                 filtered_list[data].get_status(),
+                 filtered_list[data].get_importance());
+    }
+
+}
+
 //Changes the importance of a task
 fn change_importance(new_importance : i32, name_of_task : &str, path_to_file : &str, path: bool) {
 
@@ -160,7 +191,7 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
 
     let mut list = todo_list;
 
-    match command.trim() {
+    match command.to_lowercase().trim() {
         "list" | "l" => {
             list_tasks(file_path, path).expect("Could not get data from the file.");
         }
@@ -188,12 +219,12 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
                 }
             }
 
-            add_to_list(create_task(task.trim(), importance), &mut list);
+            add_to_list(create_task(task.to_lowercase().trim(), importance), &mut list);
 
-            println!("Would you like to add a new task or exit? (add/exit): ");
+            println!("Would you like to add a new task or are you done adding tasks? (add/done): ");
             let input = input().expect("Could not unwrap String");
 
-            if input.trim() == "exit" || input.trim() == "e" {
+            if input.trim() == "done" || input.trim() == "d" {
                 write_file(&mut list, file_path).expect("Could not parse the file");
 
                 if auto_clean {
@@ -204,34 +235,45 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
 
         }
         "help" | "h" => {
-            println!("\n\
-                \t\tlist: Lists the tasks that are currently on your list. Uncompleted and
-                Completed will show up unless you use a filter, or when you exit the program.
-                Exiting automatically cleans up completed tasks if auto_clean is set to true.
 
-                add: Adds a task to your list. These can later be marked as completed or
-                modified to change their importance. You can also filter these tasks later to only
-                view the ones you need.
+            let list = "list".bright_red();
+            let add = "add".bright_cyan();
+            let remove = "remove".bright_yellow();
+            let importance = "importance".bright_green();
+            let status = "status".bright_white();
+            let clean = "clean".bright_blue();
+            let autoclean = "auto_clean".bright_purple();
+            let exit = "exit".bright_magenta();
 
-                remove: Removes a task from your list. All tasks marked completed are automatically
-                removed when the program exits. However, you can preemptively remove tasks if you'd
-                like!
+            println!("* {}: Lists the tasks that are currently on your list. Uncompleted and
+Completed will show up unless you use a filter, or when you exit the program.
+Exiting automatically cleans up completed tasks if auto_clean is set to true.
 
-                importance: Allows you to modify the importance of your tasks. You can change their
-                importance level from an integer between 1 and 4! This will be helpful when you want
-                to filter tasks, but some tasks are no longer as urgent.
+* {}: Adds a task to your list. These can later be marked as completed or
+modified to change their importance. You can also filter these tasks later to only
+view the ones you need.
 
-                clean: Cleans up your completed tasks. If auto_clean is set to true, the program
-                will clean the completed tasks when the program exits. To set auto_clean, just run
-                todo auto_clean.
+* {}: Removes a task from your list. All tasks marked completed are automatically
+removed when the program exits. However, you can preemptively remove tasks if you'd
+like!
 
-                auto_clean: Sets auto_clean to true; run it again, it gets set to false. This
-                automatically deletes tasks marked as complete once the file exits.
+* {}: Allows you to modify the importance of your tasks. You can change their
+importance level from an integer between 1 and 4! This will be helpful when you want
+to filter tasks, but some tasks are no longer as urgent.
 
-                exit: Exits the program. If auto_clean is enabled, it will automatically delete
-                completed tasks.
+* {}: Status changes the completed status of your task. If you run status, it completes
+  the specified task, or alternatively it will mark a task as incomplete if run on the
+  same task.
 
-                ");
+* {}: Cleans up your completed tasks. If auto_clean is set to true, the program
+will clean the completed tasks when the program exits. To set auto_clean, just run
+todo auto_clean.
+
+* {}: Sets auto_clean to true; run it again, it gets set to false. This
+automatically deletes tasks marked as complete once the file exits.
+
+* {}: Exits the program. If auto_clean is enabled, it will automatically delete
+completed tasks.", list, add, remove, importance, status ,clean, autoclean, exit);
 
         }
         "remove" | "r" => {
@@ -251,7 +293,7 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
             change_importance(new_importance, task.trim(), file_path, path);
         }
         "status" | "s" => {
-            println!("What task do you need to change the status(importance) of?");
+            println!("What task do you need to change the status(completion) of?");
             let task = input().unwrap();
 
             mark_completed(task.trim(), file_path, path);
@@ -259,7 +301,7 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
         "clean" | "c" => {
             clean(file_path, path);
         }
-        "auto_clean" | "-ac" => {
+        "auto_clean" | "ac" => {
             write_flag_values(auto_clean_flag(auto_clean)).expect("Unable to set the flags. \
                 Likely a file error");
         }
@@ -272,7 +314,7 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
 //Writes the new/updated list to a new or existing file
 fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
 
-    let existing_tasks = list.clone();
+    let existing_tasks = list;
 
     let serialized_data = serde_json::to_string_pretty(&existing_tasks)?;
 
