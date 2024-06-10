@@ -7,7 +7,9 @@ use std::fs::OpenOptions;
 use std::path::Path;
 
 fn main() {
-    let todo_list : Vec<Todo> = vec![];
+    let mut todo_list : Vec<Todo> = vec![];
+
+    let auto_clean : bool = read_flag_values().unwrap();
 
     let path = Path::exists("todo_list.json".as_ref());
     let file_path = "todo_list.json";
@@ -16,7 +18,7 @@ fn main() {
 
     let command = parse_commands(&args);
 
-    handle_command(command, todo_list, file_path, path);
+    handle_command(&mut todo_list, file_path, path, auto_clean, command);
 
 }
 
@@ -58,7 +60,7 @@ fn mark_completed(task_to_complete : &str, path_to_file : &str, path : bool) {
         }
     };
 
-    for mut task in &mut list {
+    for task in &mut list {
         if task.get_task().trim() == task_to_complete {
             task.change_status();
         }
@@ -107,7 +109,7 @@ fn change_importance(new_importance : i32, name_of_task : &str, path_to_file : &
         }
     };
 
-    for mut task in &mut list {
+    for task in &mut list {
         if task.get_task().trim() == name_of_task {
             task.change_importance(new_importance);
         }
@@ -120,64 +122,92 @@ fn change_importance(new_importance : i32, name_of_task : &str, path_to_file : &
 }
 
 //Parses the commands to later handle the input
-fn parse_commands(args : &[String]) -> &str {
-    let command = &args[1];
+fn parse_commands(args : &[String]) -> Option<String> {
+    let command = args.get(1).unwrap_or(&String::from("s")).clone();
 
-    command
+    Some(command)
 
 }
 
 //Handles the commands that were parsed
-fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path : bool) {
+fn handle_command(todo_list : &mut Vec<Todo>, file_path : &str, path : bool, auto_clean : bool, intro_command : Option<String>) {
+
+    match intro_command {
+        Some(command) => execute_commands(command, todo_list, file_path, path, auto_clean),
+        None => ()
+    }
+
+    loop {
+        println!("Please input what you want to do next? For the list of commands type help.");
+        let mut command = input().unwrap();
+
+        command = command.trim().parse().unwrap();
+
+        if command == "exit" || command == "e" || command == "quit" || command == "q" {
+            if auto_clean {
+                clean(file_path, path);
+            }
+            break
+        }
+
+        execute_commands(command, todo_list, file_path, path, auto_clean);
+
+    }
+
+}
+
+fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str, path : bool, auto_clean : bool) {
 
     let mut list = todo_list;
 
-    loop {
-        match command {
-            "list" => {
-                list_tasks(file_path, path).expect("Could not get data from the file.");
-                break
-            }
-            "add" => {
-                println!("What task would you like to add?");
+    match command.trim() {
+        "list" | "l" => {
+            list_tasks(file_path, path).expect("Could not get data from the file.");
+        }
+        "add" | "a" => {
+            println!("What task would you like to add?");
 
-                println!("Please input the task: ");
-                let mut task = String::new();
+            println!("Please input the task: ");
+            let mut task = String::new();
 
-                io::stdin()
-                    .read_line(&mut task)
-                    .expect("Please input a task.");
+            io::stdin()
+                .read_line(&mut task)
+                .expect("Please input a task.");
 
-                println!("{}", "How important is the task? (1 lowest level of importance, 4 is the highest.)
+            println!("{}", "How important is the task? (1 lowest level of importance, 4 is the highest.)
                 Note: For now inputting a char or string value will make the program panic. Please only
                 input a number value.".trim());
-                let mut importance : i32 = read!();
+            let mut importance : i32 = read!();
 
-                loop {
-                    if importance < 1 || importance > 4 {
-                        println!("Please input a number between 1 and 4");
-                        importance = read!();
-                    } else {
-                        break
-                    }
-                }
-
-                add_to_list(create_task(task.trim(), importance), &mut list);
-
-                println!("Would you like to add a new task or exit? (add/exit): ");
-                let input = input().expect("Could not unwrap String");
-
-                if input.trim() == "exit" || input.trim() == "e" {
-                    write_file(&mut list, file_path).expect("Could not parse the file");
+            loop {
+                if importance < 1 || importance > 4 {
+                    println!("Please input a number between 1 and 4");
+                    importance = read!();
+                } else {
                     break
+                }
+            }
+
+            add_to_list(create_task(task.trim(), importance), &mut list);
+
+            println!("Would you like to add a new task or exit? (add/exit): ");
+            let input = input().expect("Could not unwrap String");
+
+            if input.trim() == "exit" || input.trim() == "e" {
+                write_file(&mut list, file_path).expect("Could not parse the file");
+
+                if auto_clean {
+                    clean(file_path, path);
                 }
 
             }
-            "help" => {
-                println!("\n\
+
+        }
+        "help" | "h" => {
+            println!("\n\
                 \t\tlist: Lists the tasks that are currently on your list. Uncompleted and
                 Completed will show up unless you use a filter, or when you exit the program.
-                Exiting automatically cleans up completed tasks.
+                Exiting automatically cleans up completed tasks if auto_clean is set to true.
 
                 add: Adds a task to your list. These can later be marked as completed or
                 modified to change their importance. You can also filter these tasks later to only
@@ -191,39 +221,50 @@ fn handle_command(command : &str, todo_list: Vec<Todo>, file_path : &str, path :
                 importance level from an integer between 1 and 4! This will be helpful when you want
                 to filter tasks, but some tasks are no longer as urgent.
 
+                clean: Cleans up your completed tasks. If auto_clean is set to true, the program
+                will clean the completed tasks when the program exits. To set auto_clean, just run
+                todo auto_clean.
+
+                auto_clean: Sets auto_clean to true; run it again, it gets set to false. This
+                automatically deletes tasks marked as complete once the file exits.
+
+                exit: Exits the program. If auto_clean is enabled, it will automatically delete
+                completed tasks.
+
                 ");
 
-                break
+        }
+        "remove" | "r" => {
+            println!("Please input the task you would like to remove: ");
+            let task_to_remove = input().expect("Couldn't get user input");
 
-            }
-            "remove" => {
-                println!("Please input the task you would like to remove: ");
-                let task_to_remove = input().expect("Couldn't get user input");
+            remove_task(task_to_remove.trim(), file_path, path);
 
-                remove_task(task_to_remove.trim(), file_path, path);
-                break
+        },
+        "importance" | "i" => {
+            println!("What task would you like to update?");
+            let task = input().unwrap();
 
-            },
-            "importance" => {
-                println!("What task would you like to update?");
-                let task = input().unwrap();
+            println!("What level of importance would you like to change your task to? (1 - 4)");
+            let new_importance = read!();
 
-                println!("What level of importance would you like to change your task to? (1 - 4)");
-                let new_importance = read!();
+            change_importance(new_importance, task.trim(), file_path, path);
+        }
+        "status" | "s" => {
+            println!("What task do you need to change the status(importance) of?");
+            let task = input().unwrap();
 
-                change_importance(new_importance, task.trim(), file_path, path);
-                break
-            }
-            "status" => {
-                println!("What task do you need to change the status(importance) of?");
-                let task = input().unwrap();
-
-                mark_completed(task.trim(), file_path, path);
-                break
-            }
-            _ => {
+            mark_completed(task.trim(), file_path, path);
+        }
+        "clean" | "c" => {
+            clean(file_path, path);
+        }
+        "auto_clean" | "-ac" => {
+            write_flag_values(auto_clean_flag(auto_clean)).expect("Unable to set the flags. \
+                Likely a file error");
+        }
+        _ => {
                 panic!("NO FEATURES HERE!!!! ABORT, ABORT! TO LAZY TO PROPERLY HANDLE!");
-            }
         }
     }
 }
@@ -252,7 +293,7 @@ fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
 //Lists the tasks that are on the list
 fn list_tasks(path_to_file : &str, path : bool) -> Result<(), io::Error> {
 
-    let mut file : File;
+    let file : File;
 
     if !path {
         panic!("File does not exist.");
@@ -273,9 +314,33 @@ fn list_tasks(path_to_file : &str, path : bool) -> Result<(), io::Error> {
 
 }
 
+//Cleans up and removes all completed tasks
+fn clean(path_to_file : &str, path: bool) {
+    let mut list = match read_and_return(path_to_file, path) {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Could not read the file due to {}", e);
+            return
+        }
+    };
+
+    list.retain(|task| !task.get_status());
+
+    if let Err(e) = write_file(&mut list, path_to_file) {
+        eprintln!("Could not write to file: {}. Error {}", path_to_file, e);
+    }
+}
+
+fn auto_clean_flag(auto_clean: bool) -> bool {
+    let flag = !auto_clean;
+
+    flag
+
+}
+
 //Reads and returns the list from the file
 fn read_and_return(path_to_file : &str, path : bool) -> Result<Vec<Todo>, io::Error> {
-    let mut file : File;
+    let file : File;
 
     if !path {
         panic!("File does not exist.");
@@ -286,6 +351,39 @@ fn read_and_return(path_to_file : &str, path : bool) -> Result<Vec<Todo>, io::Er
     let tasks : Vec<Todo> = serde_json::from_reader(file)?;
 
     Ok(tasks)
+
+}
+
+//Writes values to a flag file, which allows for user flags to be saved
+fn write_flag_values(autoclean : bool) -> Result<(), io::Error> {
+    let mut file = File::create("flag_values.txt")?;
+    file.write_all(autoclean.to_string().as_bytes())?;
+
+    Ok(())
+
+}
+
+fn read_flag_values() -> Result<bool, io::Error> {
+    let path = "flag_values.txt";
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(path);
+
+    match file {
+        Ok(mut file) => {
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+
+            let autoclean = contents.trim().parse().unwrap_or(false);
+            Ok(autoclean)
+        },
+        Err(e) => {
+            eprintln!("An error occurred while opening the file: {:?}", e);
+            Err(e)
+        }
+    }
 
 }
 
