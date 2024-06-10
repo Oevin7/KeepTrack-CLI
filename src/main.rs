@@ -6,6 +6,7 @@ use std::io::{ Read, Write};
 use std::fs::OpenOptions;
 use std::path::Path;
 use colored::Colorize;
+use serde_json::to_writer;
 
 fn main() {
     let mut todo_list : Vec<Todo> = vec![];
@@ -14,10 +15,6 @@ fn main() {
 
     let path = Path::exists("todo_list.json".as_ref());
     let file_path = "todo_list.json";
-
-    if !path {
-        File::create(file_path).unwrap();
-    }
 
     let args : Vec<String> = env::args().collect();
 
@@ -163,12 +160,23 @@ fn parse_commands(args : &[String]) -> Option<String> {
 //Handles the commands that were parsed
 fn handle_command(todo_list : &mut Vec<Todo>, file_path : &str, path : bool, auto_clean : bool, intro_command : Option<String>) {
 
+    if !path {
+        let file = File::create(file_path).expect("Could not create the file.");
+        let empty_vec : Vec<Todo> = Vec::new();
+
+        if let Err(e) = to_writer(file, &empty_vec) {
+            eprintln!("Failed to write to file {}: {}", file_path, e);
+        }
+
+    }
+
     match intro_command {
         Some(command) => execute_commands(command, todo_list, file_path, path, auto_clean),
         None => ()
     }
 
     loop {
+
         println!("Please input what you want to do next? For the list of commands type help.");
         let mut command = input().unwrap();
 
@@ -236,14 +244,14 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
         }
         "help" | "h" => {
 
-            let list = "list".bright_red();
+            let list = "list".bright_cyan();
             let add = "add".bright_cyan();
-            let remove = "remove".bright_yellow();
-            let importance = "importance".bright_green();
-            let status = "status".bright_white();
-            let clean = "clean".bright_blue();
-            let autoclean = "auto_clean".bright_purple();
-            let exit = "exit".bright_magenta();
+            let remove = "remove".bright_cyan();
+            let importance = "importance".bright_cyan();
+            let status = "status".bright_cyan();
+            let clean = "clean".bright_cyan();
+            let autoclean = "auto_clean".bright_cyan();
+            let exit = "exit".bright_cyan();
 
             println!("* {}: Lists the tasks that are currently on your list. Uncompleted and
 Completed will show up unless you use a filter, or when you exit the program.
@@ -337,13 +345,9 @@ fn list_tasks(path_to_file : &str, path : bool) -> Result<(), io::Error> {
 
     let file : File;
 
-    if !path {
-        panic!("File does not exist.");
-    }
-
     file = File::open(&path_to_file)?;
 
-    let tasks : Vec<Todo> = serde_json::from_reader(file)?;
+    let tasks: Vec<Todo> = serde_json::from_reader::<_, Vec<Todo>>(file).unwrap_or_else(|e| vec![]);
 
     for task in 0..tasks.len() {
         println!("Task: {}, Completed: {}, Importance: {} \n",
