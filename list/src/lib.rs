@@ -1,24 +1,30 @@
 pub mod list {
     use serde::{Deserialize, Serialize};
 
-    #[derive(Serialize, Deserialize ,Debug)]
+    #[derive(Serialize, Deserialize, Clone ,Debug)]
     pub struct Todo {
         task: String,
         is_completed: bool,
         importance: i32,
+        hidden : bool,
     }
 
     impl Todo {
-        pub fn new(task : String, is_completed : bool, importance : i32) -> Self {
+        pub fn new(task : String, is_completed : bool, importance : i32, hidden : bool) -> Self {
             Self {
                 task,
                 is_completed,
+                hidden,
                 importance,
             }
         }
 
         pub fn change_status(&mut self) {
             self.is_completed = !self.is_completed
+        }
+
+        pub fn change_hidden(&mut self) {
+            self.hidden = !self.hidden
         }
 
         pub fn get_task(&self) -> &str {
@@ -32,6 +38,11 @@ pub mod list {
         pub fn get_importance(&self) -> i32 {
             self.importance
         }
+
+        pub fn get_hidden(&self) -> bool {
+            self.hidden
+        }
+
 
         pub fn change_importance(&mut self, new_value : i32) -> i32 {
             if new_value < 1 || new_value > 4 {

@@ -1,4 +1,5 @@
-use std::{env, io};
+use std::{env, fs, io};
+use std::fmt::format;
 use text_io::read;
 use list::list::Todo;
 use std::fs::File;
@@ -7,14 +8,21 @@ use std::fs::OpenOptions;
 use std::path::Path;
 use colored::Colorize;
 use serde_json::to_writer;
+use std::fs::remove_file;
 
 fn main() {
-    let mut todo_list : Vec<Todo> = vec![];
-
     let auto_clean : bool = read_flag_values().unwrap();
+    let dir = match create_dir() {
+        Ok(dir) => dir,
+        Err(e) => panic!("Could not access dir due to {}", e),
+     };
 
-    let path = Path::exists("todo_list.json".as_ref());
-    let file_path = "todo_list.json";
+    let current_file = "";
+
+    let file_path= format!("{} {}", dir, current_file).as_str();
+    let path = Path::exists(file_path.as_ref());
+
+    let mut todo_list : Vec<Todo> = read_and_return(file_path, path).expect("No file found");
 
     let args : Vec<String> = env::args().collect();
 
@@ -30,121 +38,60 @@ fn add_to_list(task : Todo, list: &mut Vec<Todo>) {
 }
 
 //Removes tasks from the list
-fn remove_task(task_to_remove : &str, path_to_file : &str, path : bool) {
+fn remove_task(todo_list : &mut Vec<Todo>, task_to_remove : &str) {
 
-    let mut list = match read_and_return(path_to_file, path) {
-        Ok(file) => file,
-        Err(e) => {
-            eprintln!("Could not read the file due to {}", e);
-            return
+    for task in 0..todo_list.len() {
+        if todo_list[task].get_task() == task_to_remove {
+            todo_list.remove(task);
         }
-    };
-
-    if let Some(data) = list.iter().position(|task| task.get_task().trim() == task_to_remove) {
-        list.remove(data);
-    } else {
-        eprintln!("Task was not found in the list.")
-    }
-
-    if let Err(e) = write_file(&mut list, path_to_file) {
-        eprintln!("Could not write to file: {}. Error: {}", path_to_file, e);
     }
 
 }
 
 //Marks a task as completed
-fn mark_completed(task_to_complete : &str, path_to_file : &str, path : bool) {
-    let mut list = match read_and_return(path_to_file, path) {
-        Ok(file) => file,
-        Err(e) => {
-            eprintln!("Could not read the file due to {}", e);
-            return
-        }
-    };
+fn mark_completed(todo_list : &mut Vec<Todo>, completed_task : &str) {
 
-    for task in &mut list {
-        if task.get_task().trim() == task_to_complete {
+    for mut task in todo_list {
+        if task.get_task() == completed_task {
             task.change_status();
         }
     }
 
-    if let Err(e) = write_file(&mut list, path_to_file) {
-        eprintln!("Could not write to file: {}. Error: {}", path_to_file, e);
-    }
 }
 
 //Creates a new task when one is added
 fn create_task(task : &str, importance : i32) -> Todo {
-    let new_task = Todo::new(task.parse().unwrap(), false, importance);
+    let new_task = Todo::new(task.parse().unwrap(), false, importance, false);
     new_task
 }
 
-//Finds a task in the list. Used to aid the other functions in editing the list
-fn find_task(name_of_task : &str, path_to_file : &str, path : bool) -> Option<Todo> {
+fn hide_task(todo_list : &mut Vec<Todo>,task_to_hide : &str) {
 
-    let mut task_to_return = None;
-
-    let tasks = match read_and_return(path_to_file, path) {
-        Ok(data) => data,
-        Err(e) => panic!("Could not read the file due to {}", e),
-    };
-
-    for task in tasks {
-        if name_of_task == task.get_task().trim() {
-            task_to_return = Some(task);
-            break;
+    for task in todo_list {
+        if task.get_task() == task_to_hide {
+            task.change_hidden();
         }
     }
-
-    task_to_return
 
 }
 
-fn filter_tasks_by_importance(importance : i32, path_to_file : &str, path : bool) {
-    let mut list = match read_and_return(path_to_file, path) {
-        Ok(file) => file,
-        Err(e) => {
-            eprintln!("Could not read the file due to {}", e);
-            return
-        }
-    };
+fn filter_tasks_by_importance(todo_list : &mut Vec<Todo> ,importance : i32) {
 
-    let mut filtered_list= vec![];
-
-    for task in &mut list {
+    for task in todo_list {
         if task.get_importance() == importance {
-            filtered_list.push(task)
+            print_tasks(task);
         }
-    }
-
-    for data in 0..filtered_list.len() {
-        println!("Task: {}, Completed: {}, Importance: {} \n",
-                 filtered_list[data].get_task().replace("\n", ""),
-                 filtered_list[data].get_status(),
-                 filtered_list[data].get_importance());
     }
 
 }
 
 //Changes the importance of a task
-fn change_importance(new_importance : i32, name_of_task : &str, path_to_file : &str, path: bool) {
+fn change_importance(todo_list : &mut Vec<Todo>, new_importance : i32, name_of_task : &str) {
 
-    let mut list = match read_and_return(path_to_file, path) {
-        Ok(file) => file,
-        Err(e) => {
-            eprintln!("Could not read the file due to {}", e);
-            return
-        }
-    };
-
-    for task in &mut list {
-        if task.get_task().trim() == name_of_task {
+    for task in todo_list {
+        if task.get_task() == name_of_task {
             task.change_importance(new_importance);
         }
-    }
-
-    if let Err(e) = write_file(&mut list, path_to_file) {
-        eprintln!("Could not write to file: {}. Error: {}", path_to_file, e);
     }
 
 }
@@ -161,10 +108,10 @@ fn parse_commands(args : &[String]) -> Option<String> {
 fn handle_command(todo_list : &mut Vec<Todo>, file_path : &str, path : bool, auto_clean : bool, intro_command : Option<String>) {
 
     if !path {
-        let file = File::create(file_path).expect("Could not create the file.");
+        let mut file = File::create(file_path).expect("Could not create the file.");
         let empty_vec : Vec<Todo> = Vec::new();
 
-        if let Err(e) = to_writer(file, &empty_vec) {
+        if let Err(e) = to_writer(&mut file, &empty_vec) {
             eprintln!("Failed to write to file {}: {}", file_path, e);
         }
 
@@ -197,12 +144,11 @@ fn handle_command(todo_list : &mut Vec<Todo>, file_path : &str, path : bool, aut
 
 fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str, path : bool, auto_clean : bool) {
 
-    let mut list = todo_list;
-
     match command.to_lowercase().trim() {
         "list" | "l" => {
-            list_tasks(file_path, path).expect("Could not get data from the file.");
+            list_tasks(todo_list);
         }
+        "list -h" => list_hidden(todo_list),
         "add" | "a" => {
             loop {
                 println!("What task would you like to add?");
@@ -228,13 +174,13 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
                     }
                 }
 
-                add_to_list(create_task(task.to_lowercase().trim(), importance), &mut list);
+                add_to_list(create_task(task.to_lowercase().trim(), importance), todo_list);
 
                 println!("Would you like to add a new task or are you done adding tasks? (add/done): ");
                 let input = input().expect("Could not unwrap String");
 
                 if input.trim() == "done" || input.trim() == "d" {
-                    write_file(&mut list, file_path).expect("Could not parse the file");
+                    write_file(todo_list, file_path).expect("Could not parse the file");
 
                     if auto_clean {
                         clean(file_path, path);
@@ -246,6 +192,7 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
         "help" | "h" => {
 
             let list = "list".bright_cyan();
+            let list_hidden = "list -h".bright_cyan();
             let add = "add".bright_cyan();
             let remove = "remove".bright_cyan();
             let importance = "importance".bright_cyan();
@@ -257,6 +204,9 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
             println!("* {}: Lists the tasks that are currently on your list. Uncompleted and
 Completed will show up unless you use a filter, or when you exit the program.
 Exiting automatically cleans up completed tasks if auto_clean is set to true.
+
+* {}: Lists hidden tasks. Works the same as other tasks, they are just hidden from your
+  current list.
 
 * {}: Adds a task to your list. These can later be marked as completed or
 modified to change their importance. You can also filter these tasks later to only
@@ -282,14 +232,15 @@ todo auto_clean.
 automatically deletes tasks marked as complete once the file exits.
 
 * {}: Exits the program. If auto_clean is enabled, it will automatically delete
-completed tasks.", list, add, remove, importance, status ,clean, autoclean, exit);
+completed tasks.", list, list_hidden, add, remove, importance, status ,clean, autoclean, exit);
 
         }
         "remove" | "r" => {
             println!("Please input the task you would like to remove: ");
             let task_to_remove = input().expect("Couldn't get user input");
 
-            remove_task(task_to_remove.trim(), file_path, path);
+            remove_task(todo_list, task_to_remove.to_lowercase().trim());
+            write_file(todo_list, file_path).unwrap();
 
         },
         "importance" | "i" => {
@@ -299,13 +250,15 @@ completed tasks.", list, add, remove, importance, status ,clean, autoclean, exit
             println!("What level of importance would you like to change your task to? (1 - 4)");
             let new_importance = read!();
 
-            change_importance(new_importance, task.trim(), file_path, path);
+            change_importance(todo_list, new_importance, task.to_lowercase().trim());
+            write_file(todo_list, file_path).unwrap()
         }
         "status" | "s" => {
             println!("What task do you need to change the status(completion) of?");
             let task = input().unwrap();
 
-            mark_completed(task.trim(), file_path, path);
+            mark_completed(todo_list, task.to_lowercase().trim());
+            write_file(todo_list, file_path).unwrap()
         }
         "clean" | "c" => {
             clean(file_path, path);
@@ -318,8 +271,19 @@ completed tasks.", list, add, remove, importance, status ,clean, autoclean, exit
             println!("Please input an integer between 1-4");
             let importance : i32 = read!();
 
-            filter_tasks_by_importance(importance, file_path, path);
+            filter_tasks_by_importance(todo_list, importance);
         }
+        "hide" => {
+            println!("Which task would you like to hide?");
+            let task = input().unwrap();
+
+            hide_task(todo_list, task.to_lowercase().trim());
+            write_file(todo_list, file_path).unwrap()
+        }
+        "delete" => {
+            delete_file(file_path).unwrap();
+            write_file(todo_list, file_path).unwrap();
+        },
         _ => {
                 panic!("NO FEATURES HERE!!!! ABORT, ABORT! TO LAZY TO PROPERLY HANDLE!");
         }
@@ -347,23 +311,73 @@ fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
 
 }
 
-//Lists the tasks that are on the list
-fn list_tasks(path_to_file : &str, path : bool) -> Result<(), io::Error> {
+fn create_dir() -> Result<&'static str, io::Error> {
+    let home_dir = dir::home_dir()?;
 
-    let file : File;
+    let app_dir = home_dir.join(".KeepTrack-CLI");
 
-    file = File::open(&path_to_file)?;
+    fs::create_dir(app_dir)?;
 
-    let tasks: Vec<Todo> = serde_json::from_reader::<_, Vec<Todo>>(file).unwrap_or_else(|e| vec![]);
+    let dir = app_dir.to_str()?;
 
-    for task in 0..tasks.len() {
-        println!("Task: {}, Completed: {}, Importance: {} \n",
-                 tasks[task].get_task().replace("\n", ""),
-                 tasks[task].get_status(),
-                 tasks[task].get_importance());
-    }
+    Ok(dir)
+
+}
+
+
+fn delete_file(path_to_file : &str) -> Result<(), io::Error> {
+    remove_file(path_to_file)?;
 
     Ok(())
+
+}
+
+fn create_file(directory : &str, name_of_file : &str) -> Result<(), io::Error> {
+
+    let file = name_of_file.to_owned() + ".json";
+
+    File::create(directory.to_owned() + file.as_str())?;
+
+    Ok(())
+}
+
+fn change_list(path_to_file : &str, path : bool) -> &str {
+
+    if path {
+        path_to_file
+    } else {
+        "Could not find your file."
+    }
+
+}
+
+fn get_current_file(path_to_file : &str, path: bool) -> &str {
+    if !path {
+        eprintln!("Could not find your file");
+    }
+
+    path_to_file
+
+}
+
+//Lists the tasks that are on the list
+fn list_tasks(todo_list : &mut Vec<Todo>) {
+
+    for task in todo_list {
+        if !task.get_hidden() {
+            print_tasks(task);
+        }
+    }
+
+}
+
+fn list_hidden(todo_list : &mut Vec<Todo>) {
+
+    for task in todo_list {
+        if task.get_hidden() {
+            print_tasks(task);
+        }
+    }
 
 }
 
@@ -405,6 +419,13 @@ fn read_and_return(path_to_file : &str, path : bool) -> Result<Vec<Todo>, io::Er
 
     Ok(tasks)
 
+}
+
+fn print_tasks(tasks : &mut Todo) {
+    println!("Task: {}, Completed: {}, Importance: {}\n",
+             tasks.get_task().replace("\n", ""),
+             tasks.get_status(),
+             tasks.get_importance());
 }
 
 //Writes values to a flag file, which allows for user flags to be saved
