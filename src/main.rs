@@ -1,5 +1,4 @@
 use std::{env, fs, io};
-use std::fmt::format;
 use text_io::read;
 use list::list::Todo;
 use std::fs::File;
@@ -12,23 +11,14 @@ use std::fs::remove_file;
 
 fn main() {
     let auto_clean : bool = read_flag_values().unwrap();
-    let dir = match create_dir() {
-        Ok(dir) => dir,
-        Err(e) => panic!("Could not access dir due to {}", e),
-     };
 
-    let current_file = "";
-
-    let file_path= format!("{} {}", dir, current_file).as_str();
-    let path = Path::exists(file_path.as_ref());
-
-    let mut todo_list : Vec<Todo> = read_and_return(file_path, path).expect("No file found");
+    let mut todo_list : Vec<Todo> = read_and_return(file_path.trim(), path).expect("No file found");
 
     let args : Vec<String> = env::args().collect();
 
     let command = parse_commands(&args);
 
-    handle_command(&mut todo_list, file_path, path, auto_clean, command);
+    handle_command(&mut todo_list, file_path.trim(), path, auto_clean, command);
 
 }
 
@@ -311,16 +301,17 @@ fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
 
 }
 
-fn create_dir() -> Result<&'static str, io::Error> {
-    let home_dir = dir::home_dir()?;
+fn create_dir() -> Option<String> {
+    let home_dir = dir::home_dir().ok_or(" ");
 
-    let app_dir = home_dir.join(".KeepTrack-CLI");
+    let app_dir = home_dir.unwrap().join(".keeptrack-cli/lists");
 
-    fs::create_dir(app_dir)?;
+    let full_dir = app_dir.to_str().unwrap_or_else(|| {
+        eprintln!("Could not create path");
+        ""
+    });
 
-    let dir = app_dir.to_str()?;
-
-    Ok(dir)
+    Some(full_dir.to_owned())
 
 }
 
