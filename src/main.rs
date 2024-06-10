@@ -204,43 +204,44 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str
             list_tasks(file_path, path).expect("Could not get data from the file.");
         }
         "add" | "a" => {
-            println!("What task would you like to add?");
+            loop {
+                println!("What task would you like to add?");
 
-            println!("Please input the task: ");
-            let mut task = String::new();
+                println!("Please input the task: ");
+                let mut task = String::new();
 
-            io::stdin()
-                .read_line(&mut task)
-                .expect("Please input a task.");
+                io::stdin()
+                    .read_line(&mut task)
+                    .expect("Please input a task.");
 
-            println!("{}", "How important is the task? (1 lowest level of importance, 4 is the highest.)
+                println!("{}", "How important is the task? (1 lowest level of importance, 4 is the highest.)
                 Note: For now inputting a char or string value will make the program panic. Please only
                 input a number value.".trim());
-            let mut importance : i32 = read!();
+                let mut importance : i32 = read!();
 
-            loop {
-                if importance < 1 || importance > 4 {
-                    println!("Please input a number between 1 and 4");
-                    importance = read!();
-                } else {
+                loop {
+                    if importance < 1 || importance > 4 {
+                        println!("Please input a number between 1 and 4");
+                        importance = read!();
+                    } else {
+                        break
+                    }
+                }
+
+                add_to_list(create_task(task.to_lowercase().trim(), importance), &mut list);
+
+                println!("Would you like to add a new task or are you done adding tasks? (add/done): ");
+                let input = input().expect("Could not unwrap String");
+
+                if input.trim() == "done" || input.trim() == "d" {
+                    write_file(&mut list, file_path).expect("Could not parse the file");
+
+                    if auto_clean {
+                        clean(file_path, path);
+                    }
                     break
                 }
             }
-
-            add_to_list(create_task(task.to_lowercase().trim(), importance), &mut list);
-
-            println!("Would you like to add a new task or are you done adding tasks? (add/done): ");
-            let input = input().expect("Could not unwrap String");
-
-            if input.trim() == "done" || input.trim() == "d" {
-                write_file(&mut list, file_path).expect("Could not parse the file");
-
-                if auto_clean {
-                    clean(file_path, path);
-                }
-
-            }
-
         }
         "help" | "h" => {
 
@@ -312,6 +313,12 @@ completed tasks.", list, add, remove, importance, status ,clean, autoclean, exit
         "auto_clean" | "ac" => {
             write_flag_values(auto_clean_flag(auto_clean)).expect("Unable to set the flags. \
                 Likely a file error");
+        }
+        "filter -fi" | "fi" => {
+            println!("Please input an integer between 1-4");
+            let importance : i32 = read!();
+
+            filter_tasks_by_importance(importance, file_path, path);
         }
         _ => {
                 panic!("NO FEATURES HERE!!!! ABORT, ABORT! TO LAZY TO PROPERLY HANDLE!");
