@@ -4,7 +4,7 @@ use list::list::Todo;
 use std::fs::File;
 use std::io::{ Read, Write};
 use std::fs::OpenOptions;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use colored::Colorize;
 use serde_json::to_writer;
 use std::fs::remove_file;
@@ -12,13 +12,21 @@ use std::fs::remove_file;
 fn main() {
     let auto_clean : bool = read_flag_values().unwrap();
 
-    let mut todo_list : Vec<Todo> = read_and_return(file_path.trim(), path).expect("No file found");
+    let home_dir = dir::home_dir().unwrap();
+
+    let full_dir = home_dir.join(".keeptrack-cli").join("lists");
+
+    let file_path = &full_dir.clone();
+    let path = Path::exists(file_path);
+
+    let mut todo_list : Vec<Todo> = change_list(file_path, path, "todo_list.json");
 
     let args : Vec<String> = env::args().collect();
 
     let command = parse_commands(&args);
 
-    handle_command(&mut todo_list, file_path.trim(), path, auto_clean, command);
+    handle_command(&mut todo_list, file_path, path, auto_clean, command);
+
 
 }
 
@@ -95,14 +103,14 @@ fn parse_commands(args : &[String]) -> Option<String> {
 }
 
 //Handles the commands that were parsed
-fn handle_command(todo_list : &mut Vec<Todo>, file_path : &str, path : bool, auto_clean : bool, intro_command : Option<String>) {
+fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool, intro_command : Option<String>) {
 
     if !path {
-        let mut file = File::create(file_path).expect("Could not create the file.");
+        let mut file = File::create(file_path.to_str().unwrap()).expect("Could not create the file.");
         let empty_vec : Vec<Todo> = Vec::new();
 
         if let Err(e) = to_writer(&mut file, &empty_vec) {
-            eprintln!("Failed to write to file {}: {}", file_path, e);
+            eprintln!("Failed to write to file {:?}: {}", file_path, e);
         }
 
     }
@@ -114,7 +122,7 @@ fn handle_command(todo_list : &mut Vec<Todo>, file_path : &str, path : bool, aut
 
     loop {
 
-        println!("Please input what you want to do next? For the list of commands type help.");
+        println!("Please input what you want to do next? For the list of commands type help: ");
         let mut command = input().unwrap();
 
         command = command.trim().parse().unwrap();
@@ -132,7 +140,7 @@ fn handle_command(todo_list : &mut Vec<Todo>, file_path : &str, path : bool, aut
 
 }
 
-fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &str, path : bool, auto_clean : bool) {
+fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool) {
 
     match command.to_lowercase().trim() {
         "list" | "l" => {
@@ -281,7 +289,7 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
 }
 
 //Writes the new/updated list to a new or existing file
-fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
+fn write_file(list : &Vec<Todo>, file_path : &PathBuf) -> Result<(), io::Error> {
 
     let existing_tasks = list;
 
@@ -301,53 +309,42 @@ fn write_file(list : &Vec<Todo>, file_path : &str) -> Result<(), io::Error> {
 
 }
 
-fn create_dir() -> Option<String> {
-    let home_dir = dir::home_dir().ok_or(" ");
-
-    let app_dir = home_dir.unwrap().join(".keeptrack-cli/lists");
-
-    let full_dir = app_dir.to_str().unwrap_or_else(|| {
-        eprintln!("Could not create path");
-        ""
-    });
-
-    Some(full_dir.to_owned())
-
-}
-
-
-fn delete_file(path_to_file : &str) -> Result<(), io::Error> {
+fn delete_file(path_to_file : &PathBuf) -> Result<(), io::Error> {
     remove_file(path_to_file)?;
 
     Ok(())
 
 }
 
-fn create_file(directory : &str, name_of_file : &str) -> Result<(), io::Error> {
+fn create_file(directory : &PathBuf, name_of_file : &str) -> Result<(), io::Error> {
 
-    let file = name_of_file.to_owned() + ".json";
+    let file = name_of_file.to_lowercase().to_owned() + ".json";
 
-    File::create(directory.to_owned() + file.as_str())?;
+    File::create(directory.join(file))?;
 
     Ok(())
 }
 
-fn change_list(path_to_file : &str, path : bool) -> &str {
-
-    if path {
-        path_to_file
-    } else {
-        "Could not find your file."
+fn change_list(path_to_file : &PathBuf, path : bool, name_of_list : &str) -> Vec<Todo> {
+    if !path {
+        eprintln!("Path does not exist.");
     }
+
+    let mut new_list : Vec<Todo> = vec![];
+
+    for file in path_to_file {
+        let file_as_str : &str = file.to_str().unwrap();
+
+        if file_as_str == name_of_list {
+            new_list = read_and_return(path_to_file, path).unwrap();
+        }
+    }
+
+    new_list
 
 }
 
-fn get_current_file(path_to_file : &str, path: bool) -> &str {
-    if !path {
-        eprintln!("Could not find your file");
-    }
-
-    path_to_file
+fn get_current_list() {
 
 }
 
@@ -373,7 +370,7 @@ fn list_hidden(todo_list : &mut Vec<Todo>) {
 }
 
 //Cleans up and removes all completed tasks
-fn clean(path_to_file : &str, path: bool) {
+fn clean(path_to_file : &PathBuf, path: bool) {
     let mut list = match read_and_return(path_to_file, path) {
         Ok(file) => file,
         Err(e) => {
@@ -385,7 +382,7 @@ fn clean(path_to_file : &str, path: bool) {
     list.retain(|task| !task.get_status());
 
     if let Err(e) = write_file(&mut list, path_to_file) {
-        eprintln!("Could not write to file: {}. Error {}", path_to_file, e);
+        eprintln!("Could not write to file: {:?}. Error {}", path_to_file, e);
     }
 }
 
@@ -397,7 +394,7 @@ fn auto_clean_flag(auto_clean: bool) -> bool {
 }
 
 //Reads and returns the list from the file
-fn read_and_return(path_to_file : &str, path : bool) -> Result<Vec<Todo>, io::Error> {
+fn read_and_return(path_to_file : &PathBuf, path : bool) -> Result<Vec<Todo>, io::Error> {
     let file : File;
 
     if !path {
