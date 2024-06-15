@@ -1,3 +1,6 @@
+mod user_handling;
+mod file_management;
+
 use std::{env, fs, io};
 use text_io::read;
 use list::list::Todo;
@@ -8,6 +11,8 @@ use std::path::{Path, PathBuf};
 use colored::Colorize;
 use serde_json::to_writer;
 use std::fs::remove_file;
+use user_handling::{input, read_flag_values};
+use file_management::{read_and_return, write_file, delete_file};
 
 fn main() {
     let auto_clean : bool = read_flag_values().unwrap();
@@ -17,15 +22,24 @@ fn main() {
     let full_dir = home_dir.join(".keeptrack-cli").join("lists");
 
     let file_path = &full_dir.clone();
-    let path = Path::exists(file_path);
+    let path = Path::new(&file_path);
 
-    let mut todo_list : Vec<Todo> = change_list(file_path, path, "todo_list.json");
+    match fs::create_dir_all(&path) {
+        Ok(_) => println!("Directory created successfully!"),
+        Err(e) => eprintln!("Problem creating directory: {:?}", e),
+    }
+
+    if !path.exists() {
+        fs::create_dir(&path).expect("Failed to create directory");
+    }
+
+    let mut todo_list : Vec<Todo> = change_list(file_path, path.exists(), "todo_list.json");
 
     let args : Vec<String> = env::args().collect();
 
     let command = parse_commands(&args);
 
-    handle_command(&mut todo_list, file_path, path, auto_clean, command);
+    handle_command(&mut todo_list, file_path, path.exists(), auto_clean, command);
 
 
 }
@@ -96,14 +110,14 @@ fn change_importance(todo_list : &mut Vec<Todo>, new_importance : i32, name_of_t
 
 //Parses the commands to later handle the input
 fn parse_commands(args : &[String]) -> Option<String> {
-    let command = args.get(1).unwrap_or(&String::from("s")).clone();
+    let command = args.get(1).unwrap_or(&String::from("")).clone();
 
     Some(command)
 
 }
 
 //Handles the commands that were parsed
-fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool, intro_command : Option<String>) {
+fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool, mut intro_command: Option<String>) {
 
     if !path {
         let mut file = File::create(file_path.to_str().unwrap()).expect("Could not create the file.");
@@ -115,32 +129,38 @@ fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool,
 
     }
 
-    match intro_command {
-        Some(command) => execute_commands(command, todo_list, file_path, path, auto_clean),
-        None => ()
+    let command_check = intro_command.clone();
+
+    if command_check.is_some() {
+        if command_check.unwrap() == "" {
+            intro_command = None;
+        }
     }
 
-    loop {
+    match intro_command {
+        Some(command) => execute_commands(command, todo_list, file_path, auto_clean),
+        None => loop {
 
-        println!("Please input what you want to do next? For the list of commands type help: ");
-        let mut command = input().unwrap();
+            println!("Please input what you want to do next? For the list of commands type help: ");
+            let mut command = input().unwrap();
 
-        command = command.trim().parse().unwrap();
+            command = command.trim().parse().unwrap();
 
-        if command == "exit" || command == "e" || command == "quit" || command == "q" {
-            if auto_clean {
-                clean(file_path, path);
+            if command == "exit" || command == "e" || command == "quit" || command == "q" {
+                if auto_clean {
+                    clean(file_path);
+                }
+                break
             }
-            break
+
+            execute_commands(command, todo_list, file_path, auto_clean);
+
         }
-
-        execute_commands(command, todo_list, file_path, path, auto_clean);
-
     }
 
 }
 
-fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool) {
+fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &PathBuf, auto_clean : bool) {
 
     match command.to_lowercase().trim() {
         "list" | "l" => {
@@ -181,7 +201,7 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &Pat
                     write_file(todo_list, file_path).expect("Could not parse the file");
 
                     if auto_clean {
-                        clean(file_path, path);
+                        clean(file_path);
                     }
                     break
                 }
@@ -259,7 +279,7 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
             write_file(todo_list, file_path).unwrap()
         }
         "clean" | "c" => {
-            clean(file_path, path);
+            clean(file_path);
         }
         "auto_clean" | "ac" => {
             write_flag_values(auto_clean_flag(auto_clean)).expect("Unable to set the flags. \
@@ -288,34 +308,6 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
     }
 }
 
-//Writes the new/updated list to a new or existing file
-fn write_file(list : &Vec<Todo>, file_path : &PathBuf) -> Result<(), io::Error> {
-
-    let existing_tasks = list;
-
-    let serialized_data = serde_json::to_string_pretty(&existing_tasks)?;
-
-    let mut open_file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .create(true)
-        .open(file_path)?;
-
-    if let Err(e) = writeln!(open_file, "{}", serialized_data) {
-        eprintln!("Couldn't write to file: {}", e);
-    }
-
-    Ok(())
-
-}
-
-fn delete_file(path_to_file : &PathBuf) -> Result<(), io::Error> {
-    remove_file(path_to_file)?;
-
-    Ok(())
-
-}
-
 fn create_file(directory : &PathBuf, name_of_file : &str) -> Result<(), io::Error> {
 
     let file = name_of_file.to_lowercase().to_owned() + ".json";
@@ -336,7 +328,7 @@ fn change_list(path_to_file : &PathBuf, path : bool, name_of_list : &str) -> Vec
         let file_as_str : &str = file.to_str().unwrap();
 
         if file_as_str == name_of_list {
-            new_list = read_and_return(path_to_file, path).unwrap();
+            new_list = read_and_return(path_to_file).unwrap();
         }
     }
 
@@ -370,8 +362,8 @@ fn list_hidden(todo_list : &mut Vec<Todo>) {
 }
 
 //Cleans up and removes all completed tasks
-fn clean(path_to_file : &PathBuf, path: bool) {
-    let mut list = match read_and_return(path_to_file, path) {
+fn clean(path_to_file : &PathBuf) {
+    let mut list = match read_and_return(path_to_file) {
         Ok(file) => file,
         Err(e) => {
             eprintln!("Could not read the file due to {}", e);
@@ -393,22 +385,6 @@ fn auto_clean_flag(auto_clean: bool) -> bool {
 
 }
 
-//Reads and returns the list from the file
-fn read_and_return(path_to_file : &PathBuf, path : bool) -> Result<Vec<Todo>, io::Error> {
-    let file : File;
-
-    if !path {
-        panic!("File does not exist.");
-    }
-
-    file = File::open(&path_to_file)?;
-
-    let tasks : Vec<Todo> = serde_json::from_reader(file)?;
-
-    Ok(tasks)
-
-}
-
 fn print_tasks(tasks : &mut Todo) {
     println!("Task: {}, Completed: {}, Importance: {}\n",
              tasks.get_task().replace("\n", ""),
@@ -422,41 +398,5 @@ fn write_flag_values(autoclean : bool) -> Result<(), io::Error> {
     file.write_all(autoclean.to_string().as_bytes())?;
 
     Ok(())
-
-}
-
-fn read_flag_values() -> Result<bool, io::Error> {
-    let path = "flag_values.txt";
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(path);
-
-    match file {
-        Ok(mut file) => {
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)?;
-
-            let autoclean = contents.trim().parse().unwrap_or(false);
-            Ok(autoclean)
-        },
-        Err(e) => {
-            eprintln!("An error occurred while opening the file: {:?}", e);
-            Err(e)
-        }
-    }
-
-}
-
-//Accepts user input when the read!() macro won't work
-fn input() -> Option<String> {
-    let mut input = String::new();
-
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Invalid input");
-
-    Some(input)
 
 }

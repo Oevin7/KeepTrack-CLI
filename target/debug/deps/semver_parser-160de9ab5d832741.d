@@ -1,0 +1,11 @@
+/home/kevin/Documents/GitHub/KeepTrack-CLI/target/debug/deps/libsemver_parser-160de9ab5d832741.rmeta: /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/lib.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/version.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/range.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/common.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/recognize.rs
+
+/home/kevin/Documents/GitHub/KeepTrack-CLI/target/debug/deps/libsemver_parser-160de9ab5d832741.rlib: /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/lib.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/version.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/range.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/common.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/recognize.rs
+
+/home/kevin/Documents/GitHub/KeepTrack-CLI/target/debug/deps/semver_parser-160de9ab5d832741.d: /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/lib.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/version.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/range.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/common.rs /home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/recognize.rs
+
+/home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/lib.rs:
+/home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/version.rs:
+/home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/range.rs:
+/home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/common.rs:
+/home/kevin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/semver-parser-0.7.0/src/recognize.rs:
