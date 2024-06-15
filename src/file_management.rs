@@ -43,3 +43,10 @@ pub fn delete_file(path_to_file : &PathBuf) -> Result<(), io::Error> {
     Ok(())
 
 }
+
+pub fn auto_clean_flag(auto_clean: bool) -> bool {
+    let flag = !auto_clean;
+
+    flag
+
+}

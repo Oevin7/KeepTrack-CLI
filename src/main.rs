@@ -12,7 +12,7 @@ use colored::Colorize;
 use serde_json::to_writer;
 use std::fs::remove_file;
 use user_handling::{input, read_flag_values};
-use file_management::{read_and_return, write_file, delete_file};
+use file_management::{read_and_return, write_file, delete_file, auto_clean_flag};
 
 fn main() {
     let auto_clean : bool = read_flag_values().unwrap();
@@ -376,13 +376,6 @@ fn clean(path_to_file : &PathBuf) {
     if let Err(e) = write_file(&mut list, path_to_file) {
         eprintln!("Could not write to file: {:?}. Error {}", path_to_file, e);
     }
-}
-
-fn auto_clean_flag(auto_clean: bool) -> bool {
-    let flag = !auto_clean;
-
-    flag
-
 }
 
 fn print_tasks(tasks : &mut Todo) {
