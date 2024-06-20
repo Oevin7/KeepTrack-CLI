@@ -2,27 +2,34 @@ mod user_handling;
 mod file_management;
 
 use std::{env, fs, io};
+use std::ffi::OsStr;
 use text_io::read;
 use list::list::Todo;
 use std::fs::File;
 use std::io::{ Read, Write};
-use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use colored::Colorize;
 use serde_json::to_writer;
-use std::fs::remove_file;
 use user_handling::{input, read_flag_values};
-use file_management::{read_and_return, write_file, delete_file, auto_clean_flag};
+use file_management::{read_and_return, write_file, delete_file, auto_clean_flag, create_file, write_flag_values};
+use crate::file_management::{get_absolute_path, write_current_list};
 
 fn main() {
     let auto_clean : bool = read_flag_values().unwrap();
 
     let home_dir = dir::home_dir().unwrap();
 
-    let full_dir = home_dir.join(".keeptrack-cli").join("lists");
+    let mut full_dir = home_dir.join(".keeptrack-cli").join("lists");
 
     let file_path = &full_dir.clone();
     let path = Path::new(&file_path);
+
+    let current_list_path = file_path.join("current_list.txt");
+    let default_list = String::from("todo_list.json");
+
+    if !current_list_path.exists() {
+        write_current_list(&default_list);
+    }
 
     match fs::create_dir_all(&path) {
         Ok(_) => println!("Directory created successfully!"),
@@ -33,13 +40,15 @@ fn main() {
         fs::create_dir(&path).expect("Failed to create directory");
     }
 
-    let mut todo_list : Vec<Todo> = change_list(file_path, path.exists(), "todo_list.json");
+    let current_list = get_absolute_path(default_list, file_path);
+
+    let mut todo_list : Vec<Todo> = read_and_return(&current_list).unwrap();
 
     let args : Vec<String> = env::args().collect();
 
     let command = parse_commands(&args);
 
-    handle_command(&mut todo_list, file_path, path.exists(), auto_clean, command);
+    handle_command(&mut todo_list, file_path, path.exists(), auto_clean, command, &current_list);
 
 
 }
@@ -117,7 +126,7 @@ fn parse_commands(args : &[String]) -> Option<String> {
 }
 
 //Handles the commands that were parsed
-fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool, mut intro_command: Option<String>) {
+fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool, mut intro_command: Option<String>, current_list : &PathBuf) {
 
     if !path {
         let mut file = File::create(file_path.to_str().unwrap()).expect("Could not create the file.");
@@ -138,7 +147,7 @@ fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool,
     }
 
     match intro_command {
-        Some(command) => execute_commands(command, todo_list, file_path, auto_clean),
+        Some(command) => execute_commands(command, todo_list, file_path, auto_clean, current_list),
         None => loop {
 
             println!("Please input what you want to do next? For the list of commands type help: ");
@@ -153,20 +162,21 @@ fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool,
                 break
             }
 
-            execute_commands(command, todo_list, file_path, auto_clean);
+            execute_commands(command, todo_list, file_path, auto_clean, current_list);
 
         }
     }
 
 }
 
-fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &PathBuf, auto_clean : bool) {
+fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &PathBuf, auto_clean : bool, current_list : &PathBuf) {
 
     match command.to_lowercase().trim() {
         "list" | "l" => {
             list_tasks(todo_list);
         }
         "list -h" => list_hidden(todo_list),
+        "list -all" => list_all(file_path),
         "add" | "a" => {
             loop {
                 println!("What task would you like to add?");
@@ -198,7 +208,7 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &Pat
                 let input = input().expect("Could not unwrap String");
 
                 if input.trim() == "done" || input.trim() == "d" {
-                    write_file(todo_list, file_path).expect("Could not parse the file");
+                    write_file(todo_list, &current_list).expect("Could not parse the file");
 
                     if auto_clean {
                         clean(file_path);
@@ -258,7 +268,7 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
             let task_to_remove = input().expect("Couldn't get user input");
 
             remove_task(todo_list, task_to_remove.to_lowercase().trim());
-            write_file(todo_list, file_path).unwrap();
+            write_file(todo_list, current_list).unwrap();
 
         },
         "importance" | "i" => {
@@ -269,17 +279,17 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
             let new_importance = read!();
 
             change_importance(todo_list, new_importance, task.to_lowercase().trim());
-            write_file(todo_list, file_path).unwrap()
+            write_file(todo_list, current_list).unwrap()
         }
         "status" | "s" => {
             println!("What task do you need to change the status(completion) of?");
             let task = input().unwrap();
 
             mark_completed(todo_list, task.to_lowercase().trim());
-            write_file(todo_list, file_path).unwrap()
+            write_file(todo_list, current_list).unwrap()
         }
         "clean" | "c" => {
-            clean(file_path);
+            clean(current_list);
         }
         "auto_clean" | "ac" => {
             write_flag_values(auto_clean_flag(auto_clean)).expect("Unable to set the flags. \
@@ -296,48 +306,45 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
             let task = input().unwrap();
 
             hide_task(todo_list, task.to_lowercase().trim());
-            write_file(todo_list, file_path).unwrap()
+            write_file(todo_list, current_list).unwrap()
         }
         "delete" => {
-            delete_file(file_path).unwrap();
-            write_file(todo_list, file_path).unwrap();
-        },
+
+            println!("Please input the task you'd like to delete (Leave blank to delete the default list): ");
+            let list_name = input().unwrap();
+
+            if list_name == "" {
+                delete_file(file_path, String::from("todo_list"));
+            }
+
+            delete_file(file_path, list_name.trim().to_string());
+
+        }
+        "create" => {
+
+            println!("Please name your new list (Leave blank for default list): ");
+            let list_name = input().unwrap();
+
+            if list_name == "" {
+                create_file(file_path, String::from("todo_list"));
+            }
+
+            create_file(file_path, list_name.trim().to_string());
+
+
+        }
+        "change" => {
+
+            println!("Which list would you like to use instead: ");
+            let list_name = input().unwrap();
+
+            write_current_list(&list_name.trim().to_string());
+
+        }
         _ => {
                 panic!("NO FEATURES HERE!!!! ABORT, ABORT! TO LAZY TO PROPERLY HANDLE!");
         }
     }
-}
-
-fn create_file(directory : &PathBuf, name_of_file : &str) -> Result<(), io::Error> {
-
-    let file = name_of_file.to_lowercase().to_owned() + ".json";
-
-    File::create(directory.join(file))?;
-
-    Ok(())
-}
-
-fn change_list(path_to_file : &PathBuf, path : bool, name_of_list : &str) -> Vec<Todo> {
-    if !path {
-        eprintln!("Path does not exist.");
-    }
-
-    let mut new_list : Vec<Todo> = vec![];
-
-    for file in path_to_file {
-        let file_as_str : &str = file.to_str().unwrap();
-
-        if file_as_str == name_of_list {
-            new_list = read_and_return(path_to_file).unwrap();
-        }
-    }
-
-    new_list
-
-}
-
-fn get_current_list() {
-
 }
 
 //Lists the tasks that are on the list
@@ -359,6 +366,28 @@ fn list_hidden(todo_list : &mut Vec<Todo>) {
         }
     }
 
+}
+
+fn list_all(directory : &PathBuf) {
+    let entries = fs::read_dir(directory).expect("Could not read directory.");
+    let extension = OsStr::new("json");
+
+    for entry in entries {
+        let entry = entry.expect("Could not read entry");
+        let path = entry.path();
+
+        if path.is_file() && path.extension() == Some(extension) {
+            match path.file_stem() {
+                Some(name) => {
+                    let lists = name.to_str().unwrap();
+
+                    println!("{lists}");
+
+                },
+                None => println!("Could not get file name"),
+            }
+        }
+    }
 }
 
 //Cleans up and removes all completed tasks
@@ -385,11 +414,3 @@ fn print_tasks(tasks : &mut Todo) {
              tasks.get_importance());
 }
 
-//Writes values to a flag file, which allows for user flags to be saved
-fn write_flag_values(autoclean : bool) -> Result<(), io::Error> {
-    let mut file = File::create("flag_values.txt")?;
-    file.write_all(autoclean.to_string().as_bytes())?;
-
-    Ok(())
-
-}
