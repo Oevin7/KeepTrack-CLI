@@ -1,11 +1,10 @@
 use std::fs::{File, OpenOptions, remove_file};
 use std::{fs, io};
-use std::char::ToLowercase;
 use std::path::PathBuf;
 use list::list::Todo;
-use std::io::{Read, Write};
+use std::io::{Read, read_to_string, Write};
 use serde_json;
-use text_io::Error;
+use crate::list_maintenance::print_tasks;
 
 //Reads and returns the list from the file
 pub fn read_and_return(path_to_file : &PathBuf) -> Result<Vec<Todo>, io::Error> {
@@ -24,6 +23,7 @@ pub fn read_and_return(path_to_file : &PathBuf) -> Result<Vec<Todo>, io::Error> 
 pub fn write_file(list : &Vec<Todo>, file_path : &PathBuf) -> Result<(), io::Error> {
 
     let existing_tasks = list;
+
 
     let serialized_data = serde_json::to_string_pretty(&existing_tasks)?;
 
@@ -90,5 +90,19 @@ pub fn get_absolute_path(file_to_find : String, rest_of_path : &PathBuf) -> Path
 pub fn write_current_list(current_list : &String) {
     let mut file = File::create("current_list.txt").expect("Could not create file");
 
-    file.write_all(current_list.as_bytes()).expect("Could not write to file.");
+    let trimmed_list = current_list.trim_end();
+
+    let full_list = trimmed_list.to_owned() + ".json";
+
+    file.write(full_list.as_bytes()).expect("Could not write to file.");
 }
+
+pub fn read_current_list(file_path : &PathBuf) -> io::Result<String> {
+
+    let content = fs::read_to_string(file_path)?;
+
+    Ok(content.to_string())
+
+}
+
+

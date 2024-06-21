@@ -3,7 +3,7 @@ The command line todo list for all your needs :)
 
 ## What is KeepTrack-CLI?
 KeepTrack-CLI started as a small project idea I was gonna use to practice Rust. However, I figured I would make this feature complete and release it so people can use and enjoy it!
-Hopfully it helps someone out there keep track of their tasks.
+Hopefully it helps someone out there keep track of their tasks.
 
 ## What are some features?
 Some of the features of KeepTrack-CLI will be (The first three features are a given):
@@ -12,7 +12,7 @@ Some of the features of KeepTrack-CLI will be (The first three features are a gi
 - removing tasks from the list
 - filtering the list by task importance
 - auto removal of completed tasks when exiting the program
-- the creation of mutlitple lists
+- the creation of multiple lists
 - and more!
 
 ## Current state of the project
