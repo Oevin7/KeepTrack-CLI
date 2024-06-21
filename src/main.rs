@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use colored::Colorize;
 use serde_json::to_writer;
 use user_handling::{input, read_flag_values};
-use file_management::{read_and_return, write_file, delete_file, auto_clean_flag, create_file, write_flag_values};
+use file_management::*;
 use crate::file_management::{get_absolute_path, write_current_list, read_current_list};
 use crate::list_maintenance::*;
 
@@ -57,13 +57,13 @@ fn main() {
 
     let command = parse_commands(&args);
 
-    handle_command(&mut todo_list, file_path, path.exists(), auto_clean, command, &current_list_path);
+    handle_command(todo_list, file_path, path.exists(), auto_clean, command, &current_list_path);
 
 
 }
 
 //Handles the commands that were parsed
-fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool, mut intro_command: Option<String>, current_list : &PathBuf) {
+fn handle_command(todo_list : Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool, mut intro_command: Option<String>, current_list : &PathBuf) {
 
     if !path {
         let mut file = File::create(file_path.to_str().unwrap()).expect("Could not create the file.");
@@ -87,6 +87,9 @@ fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool,
         Some(command) => execute_commands(command, todo_list, file_path, auto_clean, current_list),
         None => loop {
 
+            let current_list_name = read_current_list(current_list).expect("Could not read current list");
+            let current_list_path = get_absolute_path(current_list_name, file_path);
+
             println!("Please input what you want to do next? For the list of commands type help: ");
             let mut command = input().unwrap();
 
@@ -99,14 +102,14 @@ fn handle_command(todo_list : &mut Vec<Todo>, file_path : &PathBuf, path : bool,
                 break
             }
 
-            execute_commands(command.to_string(), todo_list, file_path, auto_clean, current_list);
+            execute_commands(command.to_string(), todo_list.clone(), file_path, auto_clean, &current_list_path);
 
         }
     }
 
 }
 
-fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &PathBuf, auto_clean : bool, current_list : &PathBuf) {
+fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &PathBuf, auto_clean : bool, current_list : &PathBuf) {
 
     match command.to_lowercase().trim() {
         "list" | "l" => list_tasks(todo_list),
@@ -137,13 +140,13 @@ fn execute_commands(command: String, todo_list: &mut Vec<Todo>, file_path : &Pat
                     }
                 }
 
-                add_to_list(create_task(task.to_lowercase().trim(), importance), todo_list);
+                add_to_list(create_task(task.to_lowercase().trim(), importance), todo_list.clone());
 
                 println!("Would you like to add a new task or are you done adding tasks? (add/done): ");
                 let input = input().expect("Could not unwrap String");
 
                 if input.trim() == "done" || input.trim() == "d" {
-                    write_file(todo_list, &current_list).expect("Could not parse the file");
+                    write_file(&todo_list, &current_list).expect("Could not parse the file");
 
                     if auto_clean {
                         clean(current_list);
@@ -202,8 +205,8 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
             println!("Please input the task you would like to remove: ");
             let task_to_remove = input().expect("Couldn't get user input");
 
-            remove_task(todo_list, task_to_remove.to_lowercase().trim());
-            write_file(todo_list, current_list).unwrap();
+            remove_task(&mut todo_list, task_to_remove.to_lowercase().trim());
+            write_file(&todo_list, current_list).unwrap();
 
         },
         "importance" | "i" => {
@@ -213,15 +216,15 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
             println!("What level of importance would you like to change your task to? (1 - 4)");
             let new_importance = read!();
 
-            change_importance(todo_list, new_importance, task.to_lowercase().trim());
-            write_file(todo_list, current_list).unwrap()
+            change_importance(todo_list.clone(), new_importance, task.to_lowercase().trim());
+            write_file(&todo_list, current_list).unwrap()
         }
         "status" | "s" => {
             println!("What task do you need to change the status(completion) of?");
             let task = input().unwrap();
 
-            mark_completed(todo_list, task.to_lowercase().trim());
-            write_file(todo_list, current_list).unwrap();
+            mark_completed(todo_list.clone(), task.to_lowercase().trim());
+            write_file(&todo_list, current_list).unwrap();
         }
         "clean" | "c" => {
             clean(current_list);
@@ -240,8 +243,8 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
             println!("Which task would you like to hide?");
             let task = input().unwrap();
 
-            hide_task(todo_list, task.to_lowercase().trim());
-            write_file(todo_list, current_list).unwrap()
+            hide_task(todo_list.clone(), task.to_lowercase().trim());
+            write_file(&todo_list, current_list).unwrap()
         }
         "delete" => {
 

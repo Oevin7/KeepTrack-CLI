@@ -68,7 +68,9 @@ pub fn create_file(path_to_file : &PathBuf, file_name : String) {
 
     let file_path = path_to_file.join(file);
 
-    fs::write(&file_path, "[]").expect("Could not write to file");
+    if !path_to_file.exists() {
+        fs::write(&file_path, "[]").expect("Could not write to file");
+    }
 
 }
 

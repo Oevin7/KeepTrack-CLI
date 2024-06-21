@@ -5,23 +5,23 @@ use list::list::Todo;
 use crate::file_management::{read_and_return, write_file};
 
 //Adds tasks to the list
-pub fn add_to_list(task : Todo, list: &mut Vec<Todo>) {
-    list.push(task);
+pub fn add_to_list(task : Todo, mut list: Vec<Todo>) {
+    &list.push(task);
 }
 
 //Removes tasks from the list
-pub fn remove_task(todo_list : &mut Vec<Todo>, task_to_remove : &str) {
+pub fn remove_task(mut todo_list : &mut Vec<Todo>, task_to_remove : &str) {
 
     for task in 0..todo_list.len() {
         if todo_list[task].get_task() == task_to_remove {
-            todo_list.remove(task);
+            &mut todo_list.remove(task);
         }
     }
 
 }
 
 //Marks a task as completed
-pub fn mark_completed(todo_list : &mut Vec<Todo>, completed_task : &str) {
+pub fn mark_completed(todo_list : Vec<Todo>, completed_task : &str) {
 
     for mut task in todo_list {
         if task.get_task() == completed_task {
@@ -36,9 +36,9 @@ pub fn create_task(task : &str, importance : i32) -> Todo {
     new_task
 }
 
-pub fn hide_task(todo_list : &mut Vec<Todo>,task_to_hide : &str) {
+pub fn hide_task(mut todo_list : Vec<Todo>,task_to_hide : &str) {
 
-    for task in todo_list {
+    for mut task in todo_list {
         if task.get_task() == task_to_hide {
             task.change_hidden();
         }
@@ -46,9 +46,9 @@ pub fn hide_task(todo_list : &mut Vec<Todo>,task_to_hide : &str) {
 
 }
 
-pub fn filter_tasks_by_importance(todo_list : &mut Vec<Todo> ,importance : i32) {
+pub fn filter_tasks_by_importance(mut todo_list : Vec<Todo> ,importance : i32) {
 
-    for task in todo_list {
+    for mut task in todo_list {
         if task.get_importance() == importance {
             print_tasks(task);
         }
@@ -57,9 +57,9 @@ pub fn filter_tasks_by_importance(todo_list : &mut Vec<Todo> ,importance : i32) 
 }
 
 //Changes the importance of a task
-pub fn change_importance(todo_list : &mut Vec<Todo>, new_importance : i32, name_of_task : &str) {
+pub fn change_importance(todo_list : Vec<Todo>, new_importance : i32, name_of_task : &str) {
 
-    for task in todo_list {
+    for mut task in todo_list {
         if task.get_task() == name_of_task {
             task.change_importance(new_importance);
         }
@@ -76,7 +76,7 @@ pub fn parse_commands(args : &[String]) -> Option<String> {
 }
 
 //Lists the tasks that are on the list
-pub fn list_tasks(todo_list : &mut Vec<Todo>) {
+pub fn list_tasks(todo_list : Vec<Todo>) {
 
     for task in todo_list {
         if !task.get_hidden() {
@@ -86,7 +86,7 @@ pub fn list_tasks(todo_list : &mut Vec<Todo>) {
 
 }
 
-pub fn list_hidden(todo_list : &mut Vec<Todo>) {
+pub fn list_hidden(todo_list : Vec<Todo>) {
 
     for task in todo_list {
         if task.get_hidden() {
@@ -131,12 +131,12 @@ pub fn clean(path_to_file : &PathBuf) {
 
     list.retain(|task| !task.get_status());
 
-    if let Err(e) = write_file(&mut list, path_to_file) {
+    if let Err(e) = write_file(&list, path_to_file) {
         eprintln!("Could not write to file: {:?}. Error {}", path_to_file, e);
     }
 }
 
-pub fn print_tasks(tasks : &mut Todo) {
+pub fn print_tasks(tasks : Todo) {
     println!("Task: {}, Completed: {}, Importance: {}\n",
              tasks.get_task().replace("\n", ""),
              tasks.get_status(),
