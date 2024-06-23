@@ -6,7 +6,6 @@ use crate::todo_struct::*;
 use serde_json::to_writer;
 use text_io::read;
 use crate::file_management::*;
-use crate::list_maintenance;
 use crate::list_maintenance::*;
 use crate::user_handling::{input, read_flag_values};
 
@@ -41,8 +40,6 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
 
         println!("Would you like to add a new task or are you done adding tasks? (add/done): ");
         let input = input().expect("Could not unwrap String");
-
-        println!("This is input: {input}");
 
         if input.trim() == "done" || input.trim() == "d" {
             match write_file(&return_list, current_list) {
@@ -123,8 +120,8 @@ pub fn remove_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
     println!("Please input the task you would like to remove: ");
     let task_to_remove = input().expect("Couldn't get user input");
 
-    crate::list_maintenance::remove_task(&mut todo_list, task_to_remove.to_lowercase().trim());
-    write_file(&todo_list, current_list).unwrap();
+    let return_list = remove_task(&mut todo_list, task_to_remove.to_lowercase().trim());
+    write_file(&return_list, current_list).unwrap();
 }
 
 pub fn change_importance_command(todo_list : Vec<Todo>, current_list : &PathBuf) {
@@ -134,8 +131,8 @@ pub fn change_importance_command(todo_list : Vec<Todo>, current_list : &PathBuf)
     println!("What level of importance would you like to change your task to? (1 - 4)");
     let new_importance = read!();
 
-    crate::list_maintenance::change_importance(todo_list.clone(), new_importance, task.to_lowercase().trim());
-    write_file(&todo_list, current_list).unwrap()
+    let return_list = change_importance(todo_list.clone(), new_importance, task.to_lowercase().trim());
+    write_file(&return_list, current_list).unwrap()
 }
 
 pub fn change_status_command(mut todo_list: &mut Vec<Todo>, current_list : &PathBuf) {
@@ -157,8 +154,8 @@ pub fn hide_task_command(todo_list : Vec<Todo>, current_list : &PathBuf) {
     println!("Which task would you like to hide?");
     let task = input().unwrap();
 
-    list_maintenance::hide_task(todo_list.clone(), task.to_lowercase().trim());
-    write_file(&todo_list, current_list).unwrap()
+    let returned_list = hide_task(todo_list.clone(), task.to_lowercase().trim());
+    write_file(&returned_list, current_list).unwrap()
 }
 
 pub fn delete_file_command(file_path : &PathBuf) {
@@ -167,10 +164,10 @@ pub fn delete_file_command(file_path : &PathBuf) {
     let list_name = input().unwrap();
 
     if list_name == "" {
-        crate::file_management::delete_file(file_path, String::from("todo_list"));
+        delete_file(file_path, String::from("todo_list"));
     }
 
-    crate::file_management::delete_file(file_path, list_name.trim().to_string());
+    delete_file(file_path, list_name.trim().to_string());
 }
 
 pub fn create_file_command(file_path : &PathBuf) {

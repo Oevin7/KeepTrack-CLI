@@ -15,13 +15,17 @@ pub fn add_to_list(task : Todo, mut list: &mut Vec<Todo>) -> Vec<Todo> {
 }
 
 //Removes tasks from the list
-pub fn remove_task(mut todo_list : &mut Vec<Todo>, task_to_remove : &str) {
+pub fn remove_task(mut todo_list : &mut Vec<Todo>, task_to_remove : &str) -> Vec<Todo> {
 
     for task in 0..todo_list.len() {
         if todo_list[task].get_task() == task_to_remove {
-            &mut todo_list.remove(task);
+            todo_list.remove(task);
         }
     }
+
+    let return_list = todo_list.clone();
+
+    return_list
 
 }
 
@@ -45,34 +49,37 @@ pub fn create_task(task : &str, importance : i32) -> Todo {
     new_task
 }
 
-pub fn hide_task(mut todo_list : Vec<Todo>,task_to_hide : &str) {
+pub fn hide_task(mut todo_list : Vec<Todo>,task_to_hide : &str) -> Vec<Todo> {
 
-    for mut task in todo_list {
+    for mut task in todo_list.iter_mut() {
         if task.get_task() == task_to_hide {
             task.change_hidden();
         }
     }
 
+    todo_list
+
 }
 
 pub fn filter_tasks_by_importance(mut todo_list : Vec<Todo> ,importance : i32) {
 
-    for mut task in todo_list {
+    for mut task in todo_list.clone() {
         if task.get_importance() == importance {
             print_tasks(task);
         }
     }
-
 }
 
 //Changes the importance of a task
-pub fn change_importance(todo_list : Vec<Todo>, new_importance : i32, name_of_task : &str) {
+pub fn change_importance(mut todo_list : Vec<Todo>, new_importance : i32, name_of_task : &str) -> Vec<Todo> {
 
-    for mut task in todo_list {
+    for mut task in todo_list.iter_mut() {
         if task.get_task() == name_of_task {
             task.change_importance(new_importance);
         }
     }
+
+    todo_list
 
 }
 
