@@ -320,8 +320,6 @@ fn handle_command(file_path : &PathBuf,auto_clean : bool, mut intro_command: Opt
 
 fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &PathBuf, auto_clean : bool, current_list : &PathBuf) {
 
-    println!("current_list: {:?}", current_list);
-
     match command.to_lowercase().trim() {
         "list" | "l" => list_tasks(todo_list),
         "list -h" => list_hidden(todo_list),
