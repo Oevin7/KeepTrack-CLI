@@ -131,7 +131,7 @@ pub fn clean(path_to_file : &PathBuf) {
 
     list.retain(|task| !task.get_status());
 
-    if let Err(e) = write_file(&list, path_to_file) {
+    if let Err(e) = write_file(list, path_to_file) {
         eprintln!("Could not write to file: {:?}. Error {}", path_to_file, e);
     }
 }
