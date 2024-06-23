@@ -2,6 +2,7 @@ mod user_handling;
 mod file_management;
 mod list_maintenance;
 mod list_features;
+mod todo_struct;
 
 use std::fs::File;
 use std::io::{Read, Write};

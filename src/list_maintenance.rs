@@ -1,8 +1,8 @@
 use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
-use list::list::Todo;
 use crate::file_management::{read_and_return, write_file};
+use crate::todo_struct::*;
 
 //Adds tasks to the list
 pub fn add_to_list(task : Todo, mut list: &mut Vec<Todo>) -> Vec<Todo> {
@@ -41,7 +41,7 @@ pub fn mark_completed(todo_list : &mut Vec<Todo>, completed_task : &str) -> Vec<
 
 //Creates a new task when one is added
 pub fn create_task(task : &str, importance : i32) -> Todo {
-    let new_task = Todo::new(task.parse().unwrap(), false, importance, false);
+    let new_task = Todo::new(task.parse().unwrap(), importance);
     new_task
 }
 

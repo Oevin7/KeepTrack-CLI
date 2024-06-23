@@ -2,11 +2,12 @@ use std::{env, fs, io};
 use std::fs::{create_dir_all, File};
 use std::path::{Path, PathBuf};
 use colored::Colorize;
-use list::list::Todo;
+use crate::todo_struct::*;
 use serde_json::to_writer;
 use text_io::read;
-use crate::file_management::{auto_clean_flag, create_default_file, create_file, get_absolute_path, read_and_return, read_current_list, write_current_list, write_file, write_flag_values};
-use crate::list_maintenance::{add_to_list, clean, create_task, filter_tasks_by_importance, list_all, list_hidden, list_tasks, mark_completed, parse_commands};
+use crate::file_management::*;
+use crate::list_maintenance;
+use crate::list_maintenance::*;
 use crate::user_handling::{input, read_flag_values};
 
 pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto_clean : bool) {
@@ -16,17 +17,23 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
         println!("Please input the task: ");
         let mut task = input().unwrap().trim_end().to_string();
 
-        println!("{}", "How important is the task? (1 lowest level of importance, 4 is the highest.)
-                Note: For now inputting a char or string value will make the program panic. Please only
-                input a number value.".trim());
-        let mut importance : i32 = read!();
+        let mut importance = 0;
 
         loop {
-            if importance < 1 || importance > 4 {
-                println!("Please input a number between 1 and 4");
-                importance = read!();
-            } else {
-                break
+
+            println!("{}", "How important is the task? (1 lowest level of importance, 4 is the highest.)".trim());
+
+            let user_in = input().unwrap();
+
+            match user_in.trim().parse::<i32>() {
+                Ok(n) if (1..=4).contains(&n) => {
+                    importance = n;
+                    break
+                }
+                _ => {
+                    eprintln!("Please input a number between 1 and 4.");
+                    continue
+                }
             }
         }
 
@@ -34,6 +41,8 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
 
         println!("Would you like to add a new task or are you done adding tasks? (add/done): ");
         let input = input().expect("Could not unwrap String");
+
+        println!("This is input: {input}");
 
         if input.trim() == "done" || input.trim() == "d" {
             match write_file(&return_list, current_list) {
@@ -44,6 +53,9 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
             if auto_clean {
                 clean(current_list);
             }
+
+            break
+
         }
     }
 }
@@ -132,7 +144,7 @@ pub fn hide_task_command(todo_list : Vec<Todo>, current_list : &PathBuf) {
     println!("Which task would you like to hide?");
     let task = input().unwrap();
 
-    crate::list_maintenance::hide_task(todo_list.clone(), task.to_lowercase().trim());
+    list_maintenance::hide_task(todo_list.clone(), task.to_lowercase().trim());
     write_file(&todo_list, current_list).unwrap()
 }
 
@@ -241,6 +253,8 @@ pub fn run_cli() {
 //Handles the commands that were parsed
 fn handle_command(file_path : &PathBuf,auto_clean : bool, mut intro_command: Option<String>) {
 
+    print_logo();
+
     let current_list_file = PathBuf::from("./current_list.txt");
     let current_list = read_current_list(&current_list_file).expect("Couldn't read file");
 
@@ -338,4 +352,21 @@ pub fn get_list_from_name(list_name : &String, directory : &PathBuf) -> Option<P
 
     None
 
+}
+
+fn print_logo() {
+    println!("
+
+.--------------------------------------------------------------------------.
+|                                                                          |
+| _  __                 _____               _               ____ _     ___ |
+|| |/ /___  ___ _ __   |_   _| __ __ _  ___| | __          / ___| |   |_ _||
+|| ' // _ \\/ _ \\ '_ \\    | || '__/ _` |/ __| |/ /  _____  | |   | |    | | |
+|| . \\  __/  __/ |_) |   | || | | (_| | (__|   <  |_____| | |___| |___ | | |
+||_|\\_\\___|\\___| .__/    |_||_|  \\__,_|\\___|_|\\_\\          \\____|_____|___||
+|              |_|                                                         |
+|                                                                          |
+'--------------------------------------------------------------------------'
+
+");
 }

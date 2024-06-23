@@ -2,7 +2,7 @@ use std::fs::{File, OpenOptions, read, remove_file};
 use std::{fs, io};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use list::list::Todo;
+use crate::todo_struct::*;
 use std::io::{Read, Write};
 use serde_json;
 use crate::list_features::get_list_from_name;
