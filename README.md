@@ -16,5 +16,7 @@ Some of the features of KeepTrack-CLI will be (The first three features are a gi
 - and more!
 
 ## Current state of the project
-Right now the project is still WIP. Not all the features are done, and I still have a lot of work to do before I will be ready to release the project. I will keep this page updated
-and I will ensure there will be a feature rich, full release soon! I will also release a small page of documentation to help users install and get started!
+There is finally a prerelease availible! This version is unstable, and bugs are most likely going to be present. If you encounter any bugs with the prerelease version, please don't hesitate to put an issue up! I'll respons as soon as I'm able to.
+
+## Future plans for the project
+Don't worry! This project will be maintained for the forseeable future. I plan on adding more features such as tags and favorites! I also want to incorporate a task id system, so tasks can be selected easier! As for the next update, I'm not so sure. I am a solo dev and am quite busy. However, I assure you I am working long and hard on this project!
