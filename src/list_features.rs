@@ -9,16 +9,12 @@ use crate::file_management::{auto_clean_flag, create_default_file, create_file, 
 use crate::list_maintenance::{add_to_list, clean, create_task, filter_tasks_by_importance, list_all, list_hidden, list_tasks, mark_completed, parse_commands};
 use crate::user_handling::{input, read_flag_values};
 
-pub fn add_task_command(todo_list: Vec<Todo>, current_list : &PathBuf, auto_clean : bool) -> Vec<Todo> {
+pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto_clean : bool) {
     loop {
         println!("What task would you like to add?");
 
         println!("Please input the task: ");
-        let mut task = String::new();
-
-        io::stdin()
-            .read_line(&mut task)
-            .expect("Please input a task.");
+        let mut task = input().unwrap().trim_end().to_string();
 
         println!("{}", "How important is the task? (1 lowest level of importance, 4 is the highest.)
                 Note: For now inputting a char or string value will make the program panic. Please only
@@ -34,13 +30,13 @@ pub fn add_task_command(todo_list: Vec<Todo>, current_list : &PathBuf, auto_clea
             }
         }
 
-        add_to_list(create_task(task.to_lowercase().trim(), importance), todo_list.clone());
+        let return_list = add_to_list(create_task(task.to_lowercase().trim(), importance), todo_list);
 
         println!("Would you like to add a new task or are you done adding tasks? (add/done): ");
         let input = input().expect("Could not unwrap String");
 
         if input.trim() == "done" || input.trim() == "d" {
-            match write_file(todo_list.clone(), current_list) {
+            match write_file(&return_list, current_list) {
                 Ok(_) => println!("File updated successfully!"),
                 Err(e) => eprintln!("Error writing to file: {:?}", e),
             }
@@ -48,7 +44,6 @@ pub fn add_task_command(todo_list: Vec<Todo>, current_list : &PathBuf, auto_clea
             if auto_clean {
                 clean(current_list);
             }
-            return todo_list
         }
     }
 }
@@ -104,7 +99,7 @@ pub fn remove_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
     let task_to_remove = input().expect("Couldn't get user input");
 
     crate::list_maintenance::remove_task(&mut todo_list, task_to_remove.to_lowercase().trim());
-    write_file(todo_list, current_list).unwrap();
+    write_file(&todo_list, current_list).unwrap();
 }
 
 pub fn change_importance_command(todo_list : Vec<Todo>, current_list : &PathBuf) {
@@ -115,15 +110,15 @@ pub fn change_importance_command(todo_list : Vec<Todo>, current_list : &PathBuf)
     let new_importance = read!();
 
     crate::list_maintenance::change_importance(todo_list.clone(), new_importance, task.to_lowercase().trim());
-    write_file(todo_list, current_list).unwrap()
+    write_file(&todo_list, current_list).unwrap()
 }
 
-pub fn change_status_command(todo_list: Vec<Todo>, current_list : &PathBuf) {
+pub fn change_status_command(mut todo_list: &mut Vec<Todo>, current_list : &PathBuf) {
     println!("What task do you need to change the status(completion) of?");
     let task = input().unwrap();
 
-    mark_completed(todo_list.clone(), task.to_lowercase().trim());
-    write_file(todo_list, current_list).unwrap();
+    let return_list = mark_completed(&mut todo_list, task.to_lowercase().trim());
+    write_file(&return_list, current_list).unwrap();
 }
 
 pub fn filter_importance_command(todo_list : Vec<Todo>) {
@@ -138,7 +133,7 @@ pub fn hide_task_command(todo_list : Vec<Todo>, current_list : &PathBuf) {
     let task = input().unwrap();
 
     crate::list_maintenance::hide_task(todo_list.clone(), task.to_lowercase().trim());
-    write_file(todo_list, current_list).unwrap()
+    write_file(&todo_list, current_list).unwrap()
 }
 
 pub fn delete_file_command(file_path : &PathBuf) {
@@ -217,7 +212,7 @@ pub fn prepare_current_list(task_directory : &PathBuf) -> PathBuf {
 }
 
 fn initialize_default_list_if_needed(task_directory: &Path, current_list_file: &Path) {
-    let default_list = task_directory.join("todo_list");
+    let default_list = task_directory.join("todo_list.json");
     create_default_file(&default_list);
 
     if current_list_file.exists() {
@@ -236,22 +231,22 @@ pub fn run_cli() {
 
     let file_path = &full_dir.clone();
 
-    let current_list_file = PathBuf::from("./current_list.txt");
-    let current_list_path = read_current_list(&current_list_file).expect("Couldn't read file");
-
-    let path = current_list_path.exists();
-
-    let todo_list : Vec<Todo> = read_and_return(&current_list_path).unwrap();
-
     let args : Vec<String> = env::args().collect();
     let command = parse_commands(&args);
 
-    handle_command(todo_list, file_path, path, auto_clean, command, &current_list_path);
+    handle_command(file_path, auto_clean, command);
 
 }
 
 //Handles the commands that were parsed
-fn handle_command(todo_list : Vec<Todo>, file_path : &PathBuf, path : bool, auto_clean : bool, mut intro_command: Option<String>, current_list : &PathBuf) {
+fn handle_command(file_path : &PathBuf,auto_clean : bool, mut intro_command: Option<String>) {
+
+    let current_list_file = PathBuf::from("./current_list.txt");
+    let current_list = read_current_list(&current_list_file).expect("Couldn't read file");
+
+    let path = current_list.exists();
+
+    let todo_list : Vec<Todo> = read_and_return(&current_list).unwrap();
 
     if !path {
         let mut file = File::create(file_path.to_str().unwrap()).expect("Could not create the file.");
@@ -272,11 +267,11 @@ fn handle_command(todo_list : Vec<Todo>, file_path : &PathBuf, path : bool, auto
     }
 
     match intro_command {
-        Some(command) => execute_commands(command, todo_list, file_path, auto_clean, current_list),
+        Some(command) => execute_commands(command, todo_list, file_path, auto_clean, &current_list),
         None => loop {
 
-            let current_list_name = read_current_list(current_list).expect("Could not read current list");
-            let current_list_path = get_absolute_path(current_list_name, file_path);
+            let current_list = read_current_list(&current_list_file).expect("Couldn't read file");
+            let todo_list : Vec<Todo> = read_and_return(&current_list).unwrap();
 
             println!("Please input what you want to do next? For the list of commands type help: ");
             let mut command = input().unwrap();
@@ -285,12 +280,12 @@ fn handle_command(todo_list : Vec<Todo>, file_path : &PathBuf, path : bool, auto
 
             if command == "exit" || command == "e" || command == "quit" || command == "q" {
                 if auto_clean {
-                    clean(current_list);
+                    clean(&current_list);
                 }
                 break
             }
 
-            execute_commands(command.to_string(), todo_list.clone(), file_path, auto_clean, &current_list_path);
+            execute_commands(command.to_string(), todo_list.clone(), file_path, auto_clean, &current_list);
 
         }
     }
@@ -304,11 +299,11 @@ fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &Path
         "list" | "l" => list_tasks(todo_list),
         "list -h" => list_hidden(todo_list),
         "list -all" => list_all(file_path),
-        "add" | "a" => todo_list = add_task_command(todo_list, current_list, auto_clean),
+        "add" | "a" => add_task_command(&mut todo_list, current_list, auto_clean),
         "help" | "h" => help_command(),
         "remove" | "r" => remove_task_command(todo_list, current_list),
         "importance" | "i" => change_importance_command(todo_list, current_list),
-        "status" | "s" => change_status_command(todo_list, current_list),
+        "status" | "s" => change_status_command(&mut todo_list, current_list),
         "clean" | "c" => clean(current_list),
         "auto_clean" | "ac" => write_flag_values(auto_clean_flag(auto_clean)).expect
         ("Unable to set the flags. \
@@ -326,7 +321,7 @@ fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &Path
 
 pub fn get_list_from_name(list_name : &String, directory : &PathBuf) -> Option<PathBuf> {
     let entries = fs::read_dir(directory).expect("Could not read directory.");
-    let file_name = list_name.to_lowercase();
+    let file_name = list_name.to_lowercase().trim_end().to_owned() + ".json";
 
     for entry in entries {
         let entry = entry.expect("Could not read entry");

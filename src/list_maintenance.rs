@@ -5,8 +5,13 @@ use list::list::Todo;
 use crate::file_management::{read_and_return, write_file};
 
 //Adds tasks to the list
-pub fn add_to_list(task : Todo, mut list: Vec<Todo>) {
-    &list.push(task);
+pub fn add_to_list(task : Todo, mut list: &mut Vec<Todo>) -> Vec<Todo> {
+    list.push(task);
+
+    let return_list = list.clone();
+
+    return_list
+
 }
 
 //Removes tasks from the list
@@ -21,13 +26,17 @@ pub fn remove_task(mut todo_list : &mut Vec<Todo>, task_to_remove : &str) {
 }
 
 //Marks a task as completed
-pub fn mark_completed(todo_list : Vec<Todo>, completed_task : &str) {
-
-    for mut task in todo_list {
+pub fn mark_completed(todo_list : &mut Vec<Todo>, completed_task : &str) -> Vec<Todo> {
+    for mut task in &mut *todo_list {
         if task.get_task() == completed_task {
             task.change_status();
         }
     }
+
+    let return_list = todo_list.to_owned();
+
+    return_list
+
 }
 
 //Creates a new task when one is added
@@ -131,7 +140,7 @@ pub fn clean(path_to_file : &PathBuf) {
 
     list.retain(|task| !task.get_status());
 
-    if let Err(e) = write_file(list, path_to_file) {
+    if let Err(e) = write_file(&list, path_to_file) {
         eprintln!("Could not write to file: {:?}. Error {}", path_to_file, e);
     }
 }

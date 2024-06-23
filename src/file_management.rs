@@ -21,7 +21,7 @@ pub fn read_and_return(path_to_file : &PathBuf) -> Result<Vec<Todo>, io::Error> 
 
 //Writes the new/updated list to a new or existing file
 //Writes the new/updated list to a new or existing file
-pub fn write_file(list : Vec<Todo>, file_path : &PathBuf) -> Result<(), io::Error> {
+pub fn write_file(list : &Vec<Todo>, file_path : &PathBuf) -> Result<(), io::Error> {
 
     let existing_tasks = list;
 
@@ -70,7 +70,6 @@ pub fn create_file(path_to_file : &PathBuf, file_name : String) {
     if !file_path.exists() {
         let file = OpenOptions::new()
             .create(true)
-            .write(true)
             .open(&file_path);
 
         let mut file_contents = match file {
@@ -106,7 +105,7 @@ pub fn write_current_list(current_list : &PathBuf) {
     let trimmed_list = current_list.to_owned();
     let trimmed_list_str = trimmed_list.to_str().unwrap().to_string();
 
-    let full_list = trimmed_list_str + ".json";
+    let full_list = trimmed_list_str;
 
     file.write(full_list.as_bytes()).expect("Could not write to file.");
 }
