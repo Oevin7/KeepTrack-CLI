@@ -1,4 +1,4 @@
-use std::{env, fs, io};
+use std::{env, fs};
 use std::fs::{create_dir_all, File};
 use std::path::{Path, PathBuf};
 use colored::Colorize;
@@ -14,7 +14,7 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
         println!("What task would you like to add?");
 
         println!("Please input the task: ");
-        let mut task = input().unwrap().trim_end().to_string();
+        let task = input().unwrap().trim_end().to_string();
 
         let mut importance = 0;
 

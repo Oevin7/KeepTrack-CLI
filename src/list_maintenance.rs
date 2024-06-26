@@ -5,7 +5,7 @@ use crate::file_management::{read_and_return, write_file};
 use crate::todo_struct::*;
 
 //Adds tasks to the list
-pub fn add_to_list(task : Todo, mut list: &mut Vec<Todo>) -> Vec<Todo> {
+pub fn add_to_list(task : Todo, list: &mut Vec<Todo>) -> Vec<Todo> {
     list.push(task);
 
     let return_list = list.clone();
@@ -15,11 +15,14 @@ pub fn add_to_list(task : Todo, mut list: &mut Vec<Todo>) -> Vec<Todo> {
 }
 
 //Removes tasks from the list
-pub fn remove_task(mut todo_list : &mut Vec<Todo>, task_to_remove : &str) -> Vec<Todo> {
+pub fn remove_task(todo_list : &mut Vec<Todo>, task_to_remove : &str) -> Vec<Todo> {
+
+    println!("{:?}", todo_list);
 
     for task in 0..todo_list.len() {
         if todo_list[task].get_task() == task_to_remove {
             todo_list.remove(task);
+            break
         }
     }
 
@@ -31,7 +34,7 @@ pub fn remove_task(mut todo_list : &mut Vec<Todo>, task_to_remove : &str) -> Vec
 
 //Marks a task as completed
 pub fn mark_completed(todo_list : &mut Vec<Todo>, completed_task : &str) -> Vec<Todo> {
-    for mut task in &mut *todo_list {
+    for task in todo_list.iter_mut() {
         if task.get_task() == completed_task {
             task.change_status();
         }
@@ -51,7 +54,7 @@ pub fn create_task(task : &str, importance : i32) -> Todo {
 
 pub fn hide_task(mut todo_list : Vec<Todo>,task_to_hide : &str) -> Vec<Todo> {
 
-    for mut task in todo_list.iter_mut() {
+    for task in todo_list.iter_mut() {
         if task.get_task() == task_to_hide {
             task.change_hidden();
         }
@@ -61,9 +64,9 @@ pub fn hide_task(mut todo_list : Vec<Todo>,task_to_hide : &str) -> Vec<Todo> {
 
 }
 
-pub fn filter_tasks_by_importance(mut todo_list : Vec<Todo> ,importance : i32) {
+pub fn filter_tasks_by_importance(todo_list : Vec<Todo> ,importance : i32) {
 
-    for mut task in todo_list.clone() {
+    for task in todo_list.clone() {
         if task.get_importance() == importance {
             print_tasks(task);
         }
@@ -73,7 +76,7 @@ pub fn filter_tasks_by_importance(mut todo_list : Vec<Todo> ,importance : i32) {
 //Changes the importance of a task
 pub fn change_importance(mut todo_list : Vec<Todo>, new_importance : i32, name_of_task : &str) -> Vec<Todo> {
 
-    for mut task in todo_list.iter_mut() {
+    for task in todo_list.iter_mut() {
         if task.get_task() == name_of_task {
             task.change_importance(new_importance);
         }

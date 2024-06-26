@@ -1,6 +1,4 @@
-use std::io::Read;
 use serde::{Deserialize, Serialize};
-use rand::random;
 
 #[derive(Serialize, Deserialize, Clone ,Debug)]
 pub struct Todo {

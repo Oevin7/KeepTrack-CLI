@@ -3,10 +3,9 @@ mod file_management;
 mod list_maintenance;
 mod list_features;
 mod todo_struct;
+mod test;
 
 use std::fs::File;
-use std::io::{Read, Write};
-use colored::Colorize;
 use crate::list_features::*;
 
 fn main() {

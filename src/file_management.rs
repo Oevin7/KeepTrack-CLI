@@ -1,11 +1,9 @@
-use std::fs::{File, OpenOptions, read, remove_file};
+use std::fs::{File, OpenOptions, remove_file};
 use std::{fs, io};
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::{ PathBuf};
 use crate::todo_struct::*;
-use std::io::{Read, Write};
+use std::io::{Write};
 use serde_json;
-use crate::list_features::get_list_from_name;
 
 //Reads and returns the list from the file
 pub fn read_and_return(path_to_file : &PathBuf) -> Result<Vec<Todo>, io::Error> {
@@ -74,7 +72,7 @@ pub fn create_file(path_to_file : &PathBuf, file_name : String) {
 
         let mut file_contents = match file {
             Ok(content) => content,
-            Err(e) => File::create(&file_path).expect("Could not read file"),
+            Err(_e) => File::create(&file_path).expect("Could not read file"),
         };
 
         if let Err(e) = writeln!(file_contents, "[]") {
@@ -91,12 +89,6 @@ pub fn write_flag_values(autoclean : bool) -> Result<(), io::Error> {
 
     Ok(())
 
-}
-
-pub fn get_absolute_path(file_to_find : PathBuf, rest_of_path : &PathBuf) -> PathBuf {
-    let absolute_path = rest_of_path.join(file_to_find);
-
-    absolute_path
 }
 
 pub fn write_current_list(current_list : &PathBuf) {
@@ -137,14 +129,4 @@ pub fn create_default_file(default_file_path : &PathBuf) {
         file.write_all(b"[]").expect("Could not write to file");
 
     }
-}
-
-pub fn get_current_file_path(list_name : &String, file_path : &PathBuf) -> PathBuf {
-
-    let list = get_list_from_name(list_name, file_path);
-
-    let return_list = list.unwrap_or_else(|| PathBuf::from(""));
-
-    return_list
-
 }
