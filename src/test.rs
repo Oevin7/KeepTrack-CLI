@@ -43,9 +43,9 @@ mod tests {
             Todo::new(String::from("This is another task"), 2),
         ];
 
-        change_importance(todo_list, 2, "This is a task");
+        let returned_list = change_importance(todo_list, 2, "This is a task");
 
-        assert_eq!(todo_list[0].get_importance(), 2)
+        assert_eq!(returned_list[0].get_importance(), 2);
 
     }
 
