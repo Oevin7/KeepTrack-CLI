@@ -17,8 +17,6 @@ pub fn add_to_list(task : Todo, list: &mut Vec<Todo>) -> Vec<Todo> {
 //Removes tasks from the list
 pub fn remove_task(todo_list : &mut Vec<Todo>, task_to_remove : &str) -> Vec<Todo> {
 
-    println!("{:?}", todo_list);
-
     for task in 0..todo_list.len() {
         if todo_list[task].get_task() == task_to_remove {
             todo_list.remove(task);

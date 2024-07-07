@@ -31,7 +31,7 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
                 }
                 _ => {
                     eprintln!("Please input a number between 1 and 4.");
-                    continue
+                    continue;
                 }
             }
         }
@@ -58,18 +58,18 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
 }
 
 pub fn help_command() {
-    let list = "list".bright_cyan();
-    let list_hidden = "list -h".bright_cyan();
-    let add = "add".bright_cyan();
-    let remove = "remove".bright_cyan();
-    let importance = "importance".bright_cyan();
-    let status = "status".bright_cyan();
-    let clean = "clean".bright_cyan();
-    let create = "create".bright_cyan();
-    let delete = "delete".bright_cyan();
-    let change = "change".bright_cyan();
-    let autoclean = "auto_clean".bright_cyan();
-    let exit = "exit".bright_cyan();
+    let list = "list";
+    let list_hidden = "list -h";
+    let add = "add";
+    let remove = "remove";
+    let importance = "importance";
+    let status = "status";
+    let clean = "clean";
+    let create = "create";
+    let delete = "delete";
+    let change = "change";
+    let autoclean = "auto_clean";
+    let exit = "exit";
 
     println!("* {}: Lists the tasks that are currently on your list. Uncompleted and
 Completed will show up unless you use a filter, or when you exit the program.
