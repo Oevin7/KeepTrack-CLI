@@ -1,1 +1,1 @@
-todo_list.json
+/home/kevin/.keeptrack-cli/lists/todo_list.json
