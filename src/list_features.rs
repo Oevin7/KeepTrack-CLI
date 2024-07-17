@@ -22,7 +22,7 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
 
             println!("{}", "How important is the task? (1 lowest level of importance, 4 is the highest.)".trim());
 
-            let user_in = input().unwrap();
+            let user_in = input().unwrap().to_lowercase();
 
             match user_in.trim().parse::<i32>() {
                 Ok(n) if (1..=4).contains(&n) => {
@@ -124,12 +124,16 @@ completed tasks.", list, list_hidden, add, remove, importance, status, filter ,c
 pub fn remove_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
 
     println!("Please input the task you would like to remove: ");
-    let task_to_remove = input().expect("Couldn't get user input");
+    let task_to_remove = input().expect("Couldn't get user input").to_lowercase();
 
-    if let Some(task) = find_task_by_partial_name(&todo_list, task_to_remove.trim()) {
-        remove_task(&mut todo_list, task);
-    } else {
-        println!("Task not found. Please try again.");
+    let index = match_task(&todo_list, task_to_remove.trim());
+
+    match index {
+        Ok(index) => remove_task(&mut todo_list, index),
+        Err(_) => {
+            eprintln!("Task not found. Please try again.");
+            return
+        }
     }
 
     write_file(&todo_list, current_list).unwrap();
@@ -137,15 +141,19 @@ pub fn remove_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
 
 pub fn change_importance_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
     println!("What task would you like to update?");
-    let task = input().unwrap();
+    let task = input().unwrap().to_lowercase();
 
     println!("What level of importance would you like to change your task to? (1 - 4)");
     let new_importance = read!();
 
-    if let Some(task) = find_task_by_partial_name(&todo_list, task.trim()) {
-        change_importance(&mut todo_list, new_importance, task);
-    } else {
-        println!("Task not found. Please try again.");
+    let index = match_task(&todo_list, task.trim());
+
+    match index {
+        Ok(index) => change_importance(&mut todo_list, new_importance, index),
+        Err(_) => {
+            eprintln!("Task not found. Please try again.");
+            return
+        }
     }
 
     write_file(&todo_list, current_list).unwrap()
@@ -153,13 +161,18 @@ pub fn change_importance_command(mut todo_list: Vec<Todo>, current_list : &PathB
 
 pub fn change_status_command(mut todo_list: &mut Vec<Todo>, current_list : &PathBuf) {
     println!("What task do you need to change the status(completion) of?");
-    let task = input().unwrap();
+    let task = input().unwrap().to_lowercase();
 
-    if let Some(task) = find_task_by_partial_name(&todo_list, task.trim()) {
-        mark_completed(&mut todo_list, task);
-    } else {
-        println!("Task not found. Please try again.");
+    let index = match_task(&todo_list, task.trim());
+
+    match index {
+        Ok(index) => mark_completed(&mut todo_list, index),
+        Err(_) => {
+            eprintln!("Task not found. Please try again.");
+            return
+        }
     }
+
     write_file(&todo_list, current_list).unwrap();
 }
 

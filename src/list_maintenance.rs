@@ -1,5 +1,5 @@
 use std::ffi::OsStr;
-use std::fs;
+use std::{fs, io};
 use std::path::PathBuf;
 use crate::file_management::{read_and_return, write_file};
 use crate::todo_struct::*;
@@ -160,4 +160,30 @@ pub fn print_tasks(tasks : Todo) {
 
 pub fn find_task_by_partial_name(todo_list: &Vec<Todo>, partial_name: &str) -> Option<usize> {
     todo_list.iter().position(|task| task.get_task().contains(partial_name))
+}
+
+pub fn find_task_by_name(todo_list: &Vec<Todo>, name: &str) -> Option<usize> {
+    todo_list.iter().position(|task| task.get_task().to_lowercase() == name.to_lowercase())
+}
+
+pub fn is_full_name(todo_list: &Vec<Todo>, name: &str) -> bool {
+    let full_name = find_task_by_name(todo_list, name);
+
+    match full_name {
+        Some(_) => true,
+        None => false,
+    }
+
+}
+
+pub fn match_task(todo_list: &Vec<Todo>, task: &str) -> Result<usize, io::Error> {
+
+    if is_full_name(todo_list, task) {
+        let index = find_task_by_name(todo_list, task).unwrap();
+        Ok(index)
+    } else {
+        let index = find_task_by_partial_name(todo_list, task).unwrap();
+        Ok(index)
+    }
+
 }

@@ -18,7 +18,6 @@ pub fn read_and_return(path_to_file : &PathBuf) -> Result<Vec<Todo>, io::Error> 
 }
 
 //Writes the new/updated list to a new or existing file
-//Writes the new/updated list to a new or existing file
 pub fn write_file(list : &Vec<Todo>, file_path : &PathBuf) -> Result<(), io::Error> {
 
     let existing_tasks = list;
