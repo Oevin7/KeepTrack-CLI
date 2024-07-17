@@ -23,16 +23,9 @@ pub fn remove_task(todo_list : &mut Vec<Todo>, index : usize) {
 }
 
 //Marks a task as completed
-pub fn mark_completed(todo_list : &mut Vec<Todo>, completed_task : &str) -> Vec<Todo> {
-    for task in todo_list.iter_mut() {
-        if task.get_task() == completed_task {
-            task.change_status();
-        }
-    }
+pub fn mark_completed(todo_list : &mut Vec<Todo>, completed_task : usize) {
 
-    let return_list = todo_list.to_owned();
-
-    return_list
+    todo_list[completed_task].change_status();
 
 }
 
@@ -42,15 +35,9 @@ pub fn create_task(task : &str, importance : i32) -> Todo {
     new_task
 }
 
-pub fn hide_task(mut todo_list : Vec<Todo>,task_to_hide : &str) -> Vec<Todo> {
+pub fn hide_task(todo_list : &mut Vec<Todo>,task_to_hide : usize) {
 
-    for task in todo_list.iter_mut() {
-        if task.get_task() == task_to_hide {
-            task.change_hidden();
-        }
-    }
-
-    todo_list
+    todo_list[task_to_hide].change_hidden();
 
 }
 

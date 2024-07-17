@@ -150,8 +150,12 @@ pub fn change_status_command(mut todo_list: &mut Vec<Todo>, current_list : &Path
     println!("What task do you need to change the status(completion) of?");
     let task = input().unwrap();
 
-    let return_list = mark_completed(&mut todo_list, task.to_lowercase().trim());
-    write_file(&return_list, current_list).unwrap();
+    if let Some(task) = find_task_by_partial_name(&todo_list, task.trim()) {
+        mark_completed(&mut todo_list, task);
+    } else {
+        println!("Task not found. Please try again.");
+    }
+    write_file(&todo_list, current_list).unwrap();
 }
 
 pub fn filter_importance_command(todo_list : Vec<Todo>) {
@@ -161,17 +165,21 @@ pub fn filter_importance_command(todo_list : Vec<Todo>) {
     filter_tasks_by_importance(todo_list, importance);
 }
 
-pub fn hide_task_command(todo_list : Vec<Todo>, current_list : &PathBuf) {
+pub fn hide_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
     println!("Which task would you like to hide?");
     let task = input().unwrap();
 
-    let returned_list = hide_task(todo_list.clone(), task.to_lowercase().trim());
-    write_file(&returned_list, current_list).unwrap()
+    if let Some(task) = find_task_by_partial_name(&todo_list, task.trim()) {
+        hide_task(&mut todo_list, task);
+    } else {
+        println!("Task not found. Please try again.");
+    }
+    write_file(&todo_list, current_list).unwrap()
 }
 
 pub fn delete_file_command(file_path : &PathBuf) {
 
-    println!("Please input the task you'd like to delete (Leave blank to delete the default list): ");
+    println!("Please input the list you'd like to delete (Leave blank to delete the default list): ");
     let list_name = input().unwrap();
 
     if list_name == "" {
@@ -343,10 +351,10 @@ fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &Path
                 Likely a file error"),
         "filter -fi" | "fi" => filter_importance_command(todo_list),
         "filter -s" | "fs" => filter_tasks_by_status(todo_list),
-        "hide" => hide_task_command(todo_list, current_list),
-        "delete" => delete_file_command(file_path),
-        "create" => create_file_command(file_path),
-        "change" => change_file_command(file_path),
+        "hide" | "hd" => hide_task_command(todo_list, current_list),
+        "delete" | "d" => delete_file_command(file_path),
+        "create" | "cr" => create_file_command(file_path),
+        "change" | "ch" => change_file_command(file_path),
         _ => {
             eprintln!("You made an incorrect input! Please try again :)");
         }
