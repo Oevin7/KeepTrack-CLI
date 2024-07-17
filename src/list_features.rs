@@ -50,12 +50,12 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
             if auto_clean {
                 clean(current_list);
             }
-
             break
 
         }
     }
 }
+
 
 pub fn help_command() {
     let list = "list".bright_cyan();
@@ -117,22 +117,33 @@ completed tasks.", list, list_hidden, add, remove, importance, status ,clean, au
 }
 
 pub fn remove_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
+
     println!("Please input the task you would like to remove: ");
     let task_to_remove = input().expect("Couldn't get user input");
 
-    let return_list = remove_task(&mut todo_list, task_to_remove.to_lowercase().trim());
-    write_file(&return_list, current_list).unwrap();
+    if let Some(task) = find_task_by_partial_name(&todo_list, task_to_remove.trim()) {
+        remove_task(&mut todo_list, task);
+    } else {
+        println!("Task not found. Please try again.");
+    }
+
+    write_file(&todo_list, current_list).unwrap();
 }
 
-pub fn change_importance_command(todo_list : Vec<Todo>, current_list : &PathBuf) {
+pub fn change_importance_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
     println!("What task would you like to update?");
     let task = input().unwrap();
 
     println!("What level of importance would you like to change your task to? (1 - 4)");
     let new_importance = read!();
 
-    let return_list = change_importance(todo_list.clone(), new_importance, task.to_lowercase().trim());
-    write_file(&return_list, current_list).unwrap()
+    if let Some(task) = find_task_by_partial_name(&todo_list, task.trim()) {
+        change_importance(&mut todo_list, new_importance, task);
+    } else {
+        println!("Task not found. Please try again.");
+    }
+
+    write_file(&todo_list, current_list).unwrap()
 }
 
 pub fn change_status_command(mut todo_list: &mut Vec<Todo>, current_list : &PathBuf) {
@@ -331,6 +342,7 @@ fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &Path
         ("Unable to set the flags. \
                 Likely a file error"),
         "filter -fi" | "fi" => filter_importance_command(todo_list),
+        "filter -s" | "fs" => filter_tasks_by_status(todo_list),
         "hide" => hide_task_command(todo_list, current_list),
         "delete" => delete_file_command(file_path),
         "create" => create_file_command(file_path),

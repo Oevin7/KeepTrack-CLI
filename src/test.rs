@@ -2,7 +2,8 @@
 mod tests {
     use serde::de::Unexpected::Str;
     use crate::todo_struct::*;
-    use crate::list_maintenance::{change_importance, mark_completed, remove_task};
+    use crate::list_maintenance::{change_importance, find_task_by_partial_name, mark_completed, remove_task};
+    use crate::user_handling::input;
     use super::*;
 
     #[test]
@@ -46,6 +47,20 @@ mod tests {
         let returned_list = change_importance(todo_list, 2, "This is a task");
 
         assert_eq!(returned_list[0].get_importance(), 2);
+
+    }
+
+    #[test]
+    fn does_input_match() {
+
+        let mut todo_list = vec![
+            Todo::new(String::from("This is a task"), 1),
+            Todo::new(String::from("This is another task"), 2),
+        ];
+
+        let partial_input = "This is";
+
+        assert_eq!(find_task_by_partial_name(&todo_list, partial_input).get_task(), todo_list[0].get_task());
 
     }
 

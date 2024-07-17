@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use crate::file_management::{read_and_return, write_file};
 use crate::todo_struct::*;
+use crate::user_handling::input;
 
 //Adds tasks to the list
 pub fn add_to_list(task : Todo, list: &mut Vec<Todo>) -> Vec<Todo> {
@@ -15,18 +16,9 @@ pub fn add_to_list(task : Todo, list: &mut Vec<Todo>) -> Vec<Todo> {
 }
 
 //Removes tasks from the list
-pub fn remove_task(todo_list : &mut Vec<Todo>, task_to_remove : &str) -> Vec<Todo> {
+pub fn remove_task(todo_list : &mut Vec<Todo>, index : usize) {
 
-    for task in 0..todo_list.len() {
-        if todo_list[task].get_task() == task_to_remove {
-            todo_list.remove(task);
-            break
-        }
-    }
-
-    let return_list = todo_list.clone();
-
-    return_list
+    todo_list.remove(index);
 
 }
 
@@ -71,16 +63,35 @@ pub fn filter_tasks_by_importance(todo_list : Vec<Todo> ,importance : i32) {
     }
 }
 
-//Changes the importance of a task
-pub fn change_importance(mut todo_list : Vec<Todo>, new_importance : i32, name_of_task : &str) -> Vec<Todo> {
+pub fn filter_tasks_by_status(todo_list : Vec<Todo>) {
+    let mut status = false;
 
-    for task in todo_list.iter_mut() {
-        if task.get_task() == name_of_task {
-            task.change_importance(new_importance);
+    loop {
+        println!("Would you like to see completed or uncompleted tasks? (completed or c | uncompleted or u)");
+        let user_in = input().unwrap();
+
+        if user_in.trim() == "completed" || user_in.trim() == "c" {
+            status = true;
+            break
+        } else if user_in.trim() == "uncompleted" || user_in.trim() == "u" {
+            break
+        } else {
+            println!("Invalid input. Please try again.");
         }
     }
 
-    todo_list
+    for task in todo_list {
+        if task.get_status() == status {
+            print_tasks(task);
+        }
+    }
+
+}
+
+//Changes the importance of a task
+pub fn change_importance(mut todo_list : &mut Vec<Todo>, new_importance : i32, index: usize)  {
+
+    todo_list[index].change_importance(new_importance);
 
 }
 
@@ -158,4 +169,8 @@ pub fn print_tasks(tasks : Todo) {
              tasks.get_task().replace("\n", ""),
              tasks.get_status(),
              tasks.get_importance());
+}
+
+pub fn find_task_by_partial_name(todo_list: &Vec<Todo>, partial_name: &str) -> Option<usize> {
+    todo_list.iter().position(|task| task.get_task().contains(partial_name))
 }
