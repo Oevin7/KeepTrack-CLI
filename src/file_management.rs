@@ -42,8 +42,18 @@ pub fn write_file(list : &Vec<Todo>, file_path : &PathBuf) -> Result<(), io::Err
 pub fn delete_file(path_to_file : &PathBuf, file_name : String) {
     let file_extension = String::from(".json");
     let file = file_name + &file_extension;
-
     let file_to_delete = path_to_file.join(file);
+    let current_list = read_current_list(&PathBuf::from("current_list.txt")).unwrap();
+
+    if !file_to_delete.exists() {
+        eprintln!("File does not exist");
+        return
+    }
+
+    if file_to_delete == current_list {
+        eprintln!("Cannot delete the current list");
+        return
+    }
 
     match remove_file(file_to_delete) {
         Ok(()) => println!("File removed successfully"),
