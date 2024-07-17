@@ -198,7 +198,7 @@ pub fn hide_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
 pub fn delete_file_command(file_path : &PathBuf) {
 
     println!("Please input the list you'd like to delete (Leave blank to delete the default list): ");
-    let list_name = input().unwrap();
+    let list_name = input().unwrap().to_lowercase();
 
     if list_name == "" {
         delete_file(file_path, String::from("todo_list"));
@@ -213,7 +213,7 @@ pub fn create_file_command(file_path : &PathBuf) {
 
     loop {
         println!("Please name your new list (Leave blank for default list): ");
-        list_name = input().expect("Could not get input").trim_end().parse().unwrap();
+        list_name = input().expect("Could not get input").trim_end().to_lowercase().parse().unwrap();
 
         if list_name == "" {
             eprintln!("Please enter a proper name for your list.")
@@ -228,11 +228,14 @@ pub fn create_file_command(file_path : &PathBuf) {
 pub fn change_file_command(file_path : &PathBuf) {
 
     println!("Which list would you like to use instead: ");
-    let list_name = input().unwrap();
+    let list_name = input().unwrap().to_lowercase();
 
     let change_list = match get_list_from_name(&list_name, file_path) {
         Some(file) => file,
-        None => panic!("NO FILE")
+        None => {
+            eprintln!("Could not find the list. Please try again.");
+            return
+        }
     };
 
     write_current_list(&change_list);
