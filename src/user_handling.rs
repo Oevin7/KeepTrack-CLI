@@ -18,8 +18,6 @@ pub fn read_flag_values() -> Result<bool, io::Error> {
     let path = "flag_values.txt";
     let file = OpenOptions::new()
         .read(true)
-        .write(true)
-        .create(true)
         .open(path);
 
     match file {

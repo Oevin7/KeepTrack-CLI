@@ -58,18 +58,19 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
 
 
 pub fn help_command() {
-    let list = "list".bright_cyan();
-    let list_hidden = "list -h".bright_cyan();
-    let add = "add".bright_cyan();
-    let remove = "remove".bright_cyan();
-    let importance = "importance".bright_cyan();
-    let status = "status".bright_cyan();
-    let clean = "clean".bright_cyan();
-    let create = "create".bright_cyan();
-    let delete = "delete".bright_cyan();
-    let change = "change".bright_cyan();
-    let autoclean = "auto_clean".bright_cyan();
-    let exit = "exit".bright_cyan();
+    let list = "list | l".bright_cyan();
+    let list_hidden = "list -h | lh".bright_cyan();
+    let add = "add | a".bright_cyan();
+    let remove = "remove | r".bright_cyan();
+    let importance = "importance | i".bright_cyan();
+    let status = "status | s".bright_cyan();
+    let filter = "filter".bright_cyan();
+    let clean = "clean | c".bright_cyan();
+    let create = "create | cr".bright_cyan();
+    let delete = "delete | d".bright_cyan();
+    let change = "change | ch".bright_cyan();
+    let autoclean = "auto_clean | ac".bright_cyan();
+    let exit = "exit | e".bright_cyan();
 
     println!("* {}: Lists the tasks that are currently on your list. Uncompleted and
 Completed will show up unless you use a filter, or when you exit the program.
@@ -96,6 +97,10 @@ to filter tasks, but some tasks are no longer as urgent.
   the specified task, or alternatively it will mark a task as incomplete if run on the
   same task.
 
+* {}: a command that allows you to filter your tasks. Running filter -fi allows you to filter
+by importance; While running filter -s allows you to filter by completion status. More filter
+methods may be added in the future.
+
 * {}: Cleans up your completed tasks. If auto_clean is set to true, the program
 will clean the completed tasks when the program exits. To set auto_clean, just run
 todo auto_clean.
@@ -112,7 +117,7 @@ the program handles the rest!
 use a different one.
 
 * {}: Exits the program. If auto_clean is enabled, it will automatically delete
-completed tasks.", list, list_hidden, add, remove, importance, status ,clean, autoclean, create, delete, change, exit);
+completed tasks.", list, list_hidden, add, remove, importance, status, filter ,clean, autoclean, create, delete, change, exit);
 
 }
 
@@ -265,8 +270,6 @@ fn initialize_default_list_if_needed(task_directory: &Path, current_list_file: &
 
 
 pub fn run_cli() {
-    let auto_clean : bool = read_flag_values().unwrap();
-
     let home_dir = dir::home_dir().unwrap();
     let mut full_dir = home_dir.join(".keeptrack-cli").join("lists");
 
@@ -275,12 +278,12 @@ pub fn run_cli() {
     let args : Vec<String> = env::args().collect();
     let command = parse_commands(&args);
 
-    handle_command(file_path, auto_clean, command);
+    handle_command(file_path, command);
 
 }
 
 //Handles the commands that were parsed
-fn handle_command(file_path : &PathBuf,auto_clean : bool, mut intro_command: Option<String>) {
+fn handle_command(file_path : &PathBuf, mut intro_command: Option<String>) {
 
     print_logo();
 
@@ -290,6 +293,7 @@ fn handle_command(file_path : &PathBuf,auto_clean : bool, mut intro_command: Opt
     let path = current_list.exists();
 
     let todo_list : Vec<Todo> = read_and_return(&current_list).unwrap();
+    let auto_clean : bool = read_flag_values().unwrap();
 
     if !path {
         let mut file = File::create(file_path.to_str().unwrap()).expect("Could not create the file.");
@@ -315,6 +319,7 @@ fn handle_command(file_path : &PathBuf,auto_clean : bool, mut intro_command: Opt
 
             let current_list = read_current_list(&current_list_file).expect("Couldn't read file");
             let todo_list : Vec<Todo> = read_and_return(&current_list).unwrap();
+            let auto_clean : bool = read_flag_values().unwrap();
 
             println!("Please input what you want to do next? For the list of commands type help: ");
             let mut command = input().unwrap();
