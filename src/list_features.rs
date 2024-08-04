@@ -158,16 +158,22 @@ pub fn hide_task_command(todo_list : Vec<Todo>, current_list : &PathBuf) {
     write_file(&returned_list, current_list).unwrap()
 }
 
-pub fn delete_file_command(file_path : &PathBuf) {
+pub fn delete_file_command(file_path : &PathBuf, current_list : &PathBuf) {
 
     println!("Please input the task you'd like to delete (Leave blank to delete the default list): ");
-    let list_name = input().unwrap();
+    let mut list_name = input().unwrap();
 
-    if list_name == "" {
-        delete_file(file_path, String::from("todo_list"));
+    loop {
+        if list_name == "" {
+            eprintln!("Cannot have an empty list name");
+            println!("Please input the task you'd like to delete (Leave blank to delete the default list): ");
+            list_name = input().unwrap();
+        } else {
+            break
+        }
     }
 
-    delete_file(file_path, list_name.trim().to_string());
+    delete_file(file_path, list_name.trim().to_string().to_lowercase(), current_list);
 }
 
 pub fn create_file_command(file_path : &PathBuf) {
@@ -270,7 +276,13 @@ fn handle_command(file_path : &PathBuf,auto_clean : bool, mut intro_command: Opt
 
     let path = current_list.exists();
 
-    let todo_list : Vec<Todo> = read_and_return(&current_list).unwrap();
+    let todo_list : Vec<Todo> = match read_and_return(&current_list) {
+        Ok(list) => list,
+        Err(e) => {
+            eprintln!("Could not read the current file: {:?}", e);
+            return;
+        }
+    };
 
     if !path {
         let mut file = File::create(file_path.to_str().unwrap()).expect("Could not create the file.");
@@ -295,7 +307,15 @@ fn handle_command(file_path : &PathBuf,auto_clean : bool, mut intro_command: Opt
         None => loop {
 
             let current_list = read_current_list(&current_list_file).expect("Couldn't read file");
-            let todo_list : Vec<Todo> = read_and_return(&current_list).unwrap();
+            let todo_list : Vec<Todo> = match read_and_return(&current_list) {
+                Ok(list) => {
+                    list
+                },
+                Err(e) => {
+                    eprintln!("Could not get the current list: {:?}", e);
+                    return;
+                }
+            };
 
             println!("Please input what you want to do next? For the list of commands type help: ");
             let mut command = input().unwrap();
@@ -332,7 +352,7 @@ fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &Path
                 Likely a file error"),
         "filter -fi" | "fi" => filter_importance_command(todo_list),
         "hide" => hide_task_command(todo_list, current_list),
-        "delete" => delete_file_command(file_path),
+        "delete" => delete_file_command(file_path, current_list),
         "create" => create_file_command(file_path),
         "change" => change_file_command(file_path),
         _ => {
