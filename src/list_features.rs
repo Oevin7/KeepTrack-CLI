@@ -1,5 +1,6 @@
 use std::{env, fs};
 use std::fs::{create_dir_all, File};
+use std::io::{Write};
 use std::path::{Path, PathBuf};
 use colored::Colorize;
 use crate::todo_struct::*;
@@ -7,7 +8,7 @@ use serde_json::to_writer;
 use text_io::read;
 use crate::file_management::*;
 use crate::list_maintenance::*;
-use crate::user_handling::{input, read_flag_values};
+use crate::user_handling::{input, read_flag_values, split_input};
 
 pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto_clean : bool) {
     loop {
@@ -55,7 +56,6 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
         }
     }
 }
-
 
 pub fn help_command() {
     let list = "list | l".bright_cyan();
@@ -126,7 +126,7 @@ pub fn remove_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
     println!("Please input the task you would like to remove: ");
     let task_to_remove = input().expect("Couldn't get user input").to_lowercase();
 
-    let index = match_task(&todo_list, task_to_remove.trim());
+    let index = match_task_or_tag(&todo_list, task_to_remove.trim());
 
     match index {
         Ok(index) => remove_task(&mut todo_list, index),
@@ -136,7 +136,13 @@ pub fn remove_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
         }
     }
 
-    write_file(&todo_list, current_list).unwrap();
+    match write_file(&todo_list, current_list) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Could not write to file: {e:?}");
+            return;
+        }
+    }
 }
 
 pub fn change_importance_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
@@ -146,7 +152,7 @@ pub fn change_importance_command(mut todo_list: Vec<Todo>, current_list : &PathB
     println!("What level of importance would you like to change your task to? (1 - 4)");
     let new_importance = read!();
 
-    let index = match_task(&todo_list, task.trim());
+    let index = match_task_or_tag(&todo_list, task.trim());
 
     match index {
         Ok(index) => change_importance(&mut todo_list, new_importance, index),
@@ -156,14 +162,20 @@ pub fn change_importance_command(mut todo_list: Vec<Todo>, current_list : &PathB
         }
     }
 
-    write_file(&todo_list, current_list).unwrap()
+    match write_file(&todo_list, current_list) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Could not write to file: {e:?}");
+            return;
+        }
+    }
 }
 
 pub fn change_status_command(mut todo_list: &mut Vec<Todo>, current_list : &PathBuf) {
     println!("What task do you need to change the status(completion) of?");
     let task = input().unwrap().to_lowercase();
 
-    let index = match_task(&todo_list, task.trim());
+    let index = match_task_or_tag(&todo_list, task.trim());
 
     match index {
         Ok(index) => mark_completed(&mut todo_list, index),
@@ -173,8 +185,27 @@ pub fn change_status_command(mut todo_list: &mut Vec<Todo>, current_list : &Path
         }
     }
 
-    write_file(&todo_list, current_list).unwrap();
+    match write_file(&todo_list, current_list) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Could not write to file: {e:?}");
+            return;
+        }
+    }
 }
+
+impl TagList<usize> for &&mut Vec<Todo> {
+    fn find(&self, name : &str) -> Option<usize> {
+        if is_full_name(self, name) {
+            let index = find_task_by_name(self, name);
+            index
+        } else {
+            let index = find_task_by_partial_name(self, name);
+            index
+        }
+    }
+}
+
 
 pub fn filter_importance_command(todo_list : Vec<Todo>) {
     println!("Please input an integer between 1-4");
@@ -183,7 +214,7 @@ pub fn filter_importance_command(todo_list : Vec<Todo>) {
     filter_tasks_by_importance(todo_list, importance);
 }
 
-pub fn hide_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
+fn hide_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
     println!("Which task would you like to hide?");
     let task = input().unwrap();
 
@@ -192,19 +223,79 @@ pub fn hide_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
     } else {
         println!("Task not found. Please try again.");
     }
-    write_file(&todo_list, current_list).unwrap()
+
+    match write_file(&todo_list, current_list) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Could not write to file: {e:?}");
+            return;
+        }
+    }
 }
 
-pub fn delete_file_command(file_path : &PathBuf) {
+fn add_tags_to_task(todo_list : Vec<Todo>, current_list : &PathBuf) {
+    println!("Which task would you like to add tags to?");
+    let task = match input() {
+        Some(task) => task.trim().to_lowercase(),
+        None => {
+            eprintln!("Error receiving user input. Please try again");
+            return;
+        }
+    };
 
-    println!("Please input the list you'd like to delete (Leave blank to delete the default list): ");
-    let list_name = input().unwrap().to_lowercase();
+    let matched_task = match_task_or_tag(&todo_list, &task);
 
-    if list_name == "" {
-        delete_file(file_path, String::from("todo_list"));
+    match matched_task {
+        Ok(task) => {
+            println!("Enter tags (space seperated):");
+
+            let tags = match input() {
+                Some(tag) => tag,
+                None => {
+                    eprintln!("Could not get input, please try again.");
+                    return;
+                }
+            };
+
+            let tags_list = split_input(&tags);
+
+            for tag in tags_list {
+                add_tag(&todo_list, task, tag);
+            }
+
+            match write_file(&todo_list, current_list) {
+                Ok(_) => {},
+                Err(e) => {
+                    eprintln!("Could not write to file: {e:?}");
+                    return;
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Could not find that task in the list: {e:?}");
+            return;
+        }
     }
 
-    delete_file(file_path, list_name.trim().to_string());
+}
+fn add_tag(todo_list : &Vec<Todo>, task : usize, tag : &str) {
+    let tags = &mut todo_list[task].get_tag_list();
+
+    tags.borrow_mut().push(tag.to_string());
+}
+
+fn remove_tag(todo_list : &Vec<Todo>, task : usize, tag : usize) {
+    let tags = &mut todo_list[task].get_tag_list();
+
+    tags.borrow_mut().remove(tag);
+}
+
+pub fn delete_file_command(file_path : &PathBuf, current_list : &PathBuf) {
+
+    println!("Please input the list you'd like to delete (Leave blank to delete the default list): ");
+    let mut list_name = input().unwrap().to_lowercase();
+
+    delete_file(file_path, list_name.trim().to_string(), current_list);
 }
 
 pub fn create_file_command(file_path : &PathBuf) {
@@ -342,7 +433,7 @@ fn handle_command(file_path : &PathBuf, mut intro_command: Option<String>) {
 
             command = command.trim().parse().unwrap();
 
-            if command == "exit" || command == "e" || command == "quit" || command == "q" {
+            if command == "exit" || command == "ex" || command == "quit" || command == "q" {
                 if auto_clean {
                     clean(&current_list);
                 }
@@ -361,6 +452,7 @@ fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &Path
         "list" | "l" => list_tasks(todo_list),
         "list -h" => list_hidden(todo_list),
         "list -all" => list_all(file_path),
+        "list -t" | "lt" => list_tags(todo_list),
         "add" | "a" => add_task_command(&mut todo_list, current_list, auto_clean),
         "help" | "h" => help_command(),
         "remove" | "r" => remove_task_command(todo_list, current_list),
@@ -373,9 +465,10 @@ fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &Path
         "filter -fi" | "fi" => filter_importance_command(todo_list),
         "filter -s" | "fs" => filter_tasks_by_status(todo_list),
         "hide" | "hd" => hide_task_command(todo_list, current_list),
-        "delete" | "d" => delete_file_command(file_path),
+        "delete" | "d" => delete_file_command(file_path, current_list),
         "create" | "cr" => create_file_command(file_path),
         "change" | "ch" => change_file_command(file_path),
+        "tags" | "t" => add_tags_to_task(todo_list, current_list),
         _ => {
             eprintln!("You made an incorrect input! Please try again :)");
         }

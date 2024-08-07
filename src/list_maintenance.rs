@@ -1,7 +1,9 @@
 use std::ffi::OsStr;
 use std::{fs, io};
+use std::cell::{Ref, RefCell};
 use std::path::PathBuf;
 use crate::file_management::{read_and_return, write_file};
+use crate::not_in_list_error::NotFoundInList;
 use crate::todo_struct::*;
 use crate::user_handling::input;
 
@@ -111,6 +113,25 @@ pub fn list_hidden(todo_list : Vec<Todo>) {
 
 }
 
+pub fn list_tags(todo_list : Vec<Todo>) {
+    println!("Which task's tags would you like to list?");
+    let task = match input() {
+        Some(task) => task.trim().to_lowercase(),
+        None => {
+            eprintln!("Error receiving user input. Please try again");
+            return;
+        }
+    };
+
+    if let Some(partial_task) = find_task_by_partial_name(&todo_list, &task) {
+        let tag_list = todo_list[partial_task].get_tag_list();
+        let tags = tag_list.borrow();
+
+        println!("{:?}", tags.iter().collect::<Vec<&String>>());
+    }
+
+}
+
 pub fn list_all(directory : &PathBuf) {
     let entries = fs::read_dir(directory).expect("Could not read directory.");
     let extension = OsStr::new("json");
@@ -176,14 +197,10 @@ pub fn is_full_name(todo_list: &Vec<Todo>, name: &str) -> bool {
 
 }
 
-pub fn match_task(todo_list: &Vec<Todo>, task: &str) -> Result<usize, io::Error> {
-
-    if is_full_name(todo_list, task) {
-        let index = find_task_by_name(todo_list, task).unwrap();
-        Ok(index)
-    } else {
-        let index = find_task_by_partial_name(todo_list, task).unwrap();
-        Ok(index)
+pub fn match_task_or_tag<T: TagList<usize>>(list: T, name: &str) -> Result<usize, NotFoundInList> {
+    match list.find(name) {
+        Some(index) => Ok(index),
+        None => Err(NotFoundInList),
     }
-
 }
+

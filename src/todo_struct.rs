@@ -1,11 +1,15 @@
+use std::cell::{Ref, RefCell};
 use serde::{Deserialize, Serialize};
+use crate::list_maintenance::{find_task_by_name, find_task_by_partial_name, is_full_name};
+use crate::not_in_list_error::NotFoundInList;
 
-#[derive(Serialize, Deserialize, Clone ,Debug)]
+#[derive(Serialize, Deserialize, Clone ,Debug, PartialEq)]
 pub struct Todo {
     task: String,
     is_completed: bool,
     importance: i32,
     hidden : bool,
+    tags : RefCell<Vec<String>>
 }
 
 impl Todo {
@@ -15,6 +19,7 @@ impl Todo {
             is_completed: false,
             importance,
             hidden: false,
+            tags : RefCell::new(vec![]),
         }
     }
 
@@ -51,6 +56,43 @@ impl Todo {
 
         self.importance
     }
+    pub fn get_tag_list(&self) -> &RefCell<Vec<String>> {
+        &self.tags
+    }
+}
 
+pub trait TagList<T> {
+    fn find(&self, name : &str) -> Option<usize>;
+}
+
+impl TagList<usize> for Vec<Todo> {
+    fn find(&self, name : &str) -> Option<usize> {
+        if is_full_name(self, name) {
+            let index = find_task_by_name(self, name);
+            index
+        } else {
+            let index = find_task_by_partial_name(self, name);
+            index
+        }
+    }
+}
+
+impl TagList<usize> for &Vec<Todo> {
+    fn find(&self, name : &str) -> Option<usize> {
+        if is_full_name(self, name) {
+            let index = find_task_by_name(self, name);
+            index
+        } else {
+            let index = find_task_by_partial_name(self, name);
+            index
+        }
+    }
+}
+
+
+impl TagList<usize> for Todo {
+    fn find(&self, tag: &str) -> Option<usize> {
+        self.tags.borrow().iter().position(|t| t == tag || t.contains(tag))
+    }
 }
 
