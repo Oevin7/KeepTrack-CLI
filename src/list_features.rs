@@ -284,10 +284,61 @@ fn add_tag(todo_list : &Vec<Todo>, task : usize, tag : &str) {
     tags.borrow_mut().push(tag.to_string());
 }
 
-fn remove_tag(todo_list : &Vec<Todo>, task : usize, tag : usize) {
-    let tags = &mut todo_list[task].get_tag_list();
+fn remove_tag_from_task(todo_list : Vec<Todo>, current_list : &PathBuf) {
+    println!("Which task would you like to remove tags from?");
+    let task = match input() {
+        Some(task) => task.trim().to_lowercase(),
+        None => {
+            eprintln!("Error receiving user input. Please try again");
+            return;
+        }
+    };
 
-    tags.borrow_mut().remove(tag);
+    let matched_task = match_task_or_tag(&todo_list, &task);
+
+    match matched_task {
+        Ok(task) => {
+            println!("Enter tags to remove (space seperated):");
+
+            let tags = match input() {
+                Some(tag) => tag,
+                None => {
+                    eprintln!("Could not get input, please try again.");
+                    return;
+                }
+            };
+
+            let tags_list = split_input(&tags);
+
+            let mut task_tags = todo_list[task].get_tag_list().try_borrow_mut();
+
+            match task_tags {
+                Ok(mut task_tags) => {
+                    for tags in 0..tags_list.len() {
+                        if task_tags.contains(&tags_list[tags].to_string()) {
+                            task_tags.remove(tags);
+                        }
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Could not mutably borrow task_tags: {e:?}");
+                    return;
+                }
+            }
+
+            match write_file(&todo_list, current_list) {
+                Ok(_) => {},
+                Err(e) => {
+                    eprintln!("Could not write to file: {e:?}");
+                    return;
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Could not find a matching task: {e:?}");
+            return;
+        }
+    }
 }
 
 pub fn delete_file_command(file_path : &PathBuf, current_list : &PathBuf) {
@@ -469,6 +520,7 @@ fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &Path
         "create" | "cr" => create_file_command(file_path),
         "change" | "ch" => change_file_command(file_path),
         "tags" | "t" => add_tags_to_task(todo_list, current_list),
+        "remove tags" | "rt" => remove_tag_from_task(todo_list, current_list),
         _ => {
             eprintln!("You made an incorrect input! Please try again :)");
         }
