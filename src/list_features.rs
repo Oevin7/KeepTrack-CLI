@@ -58,21 +58,21 @@ pub fn add_task_command(todo_list: &mut Vec<Todo>, current_list : &PathBuf, auto
 }
 
 pub fn help_command() {
-    let list = "list | l".bright_cyan();
-    let list_hidden = "list -h | lh".bright_cyan();
-    let add = "add | a".bright_cyan();
-    let remove = "remove | r".bright_cyan();
-    let importance = "importance | i".bright_cyan();
-    let status = "status | s".bright_cyan();
-    let filter = "filter".bright_cyan();
-    let clean = "clean | c".bright_cyan();
-    let create = "create | cr".bright_cyan();
-    let delete = "delete | d".bright_cyan();
-    let change = "change | ch".bright_cyan();
-    let autoclean = "auto_clean | ac".bright_cyan();
-    let add_tags = "tags -a | at".bright_cyan();
-    let remove_tags = "tags -r | rt".bright_cyan();
-    let exit = "exit | e".bright_cyan();
+    let list = "list | l";
+    let list_hidden = "list -h | lh";
+    let add = "add | a";
+    let remove = "remove | r";
+    let importance = "importance | i";
+    let status = "status | s";
+    let filter = "filter";
+    let clean = "clean | c";
+    let create = "create | cr";
+    let delete = "delete | d";
+    let change = "change | ch";
+    let autoclean = "auto_clean | ac";
+    let add_tags = "tags -a | at";
+    let remove_tags = "tags -r | rt";
+    let exit = "exit | e";
 
     println!("* {}: Lists the tasks that are currently on your list. Uncompleted and
 Completed will show up unless you use a filter, or when you exit the program.
