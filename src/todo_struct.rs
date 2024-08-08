@@ -96,6 +96,18 @@ impl TagList<usize> for &Vec<Todo> {
     }
 }
 
+impl TagList<usize> for &&mut Vec<Todo> {
+    fn find(&self, name : &str) -> Option<usize> {
+        if is_full_name(self, name) {
+            let index = find_task_by_name(self, name);
+            index
+        } else {
+            let index = find_task_by_partial_name(self, name);
+            index
+        }
+    }
+}
+
 
 impl TagList<usize> for Todo {
     fn find(&self, tag: &str) -> Option<usize> {

@@ -70,6 +70,8 @@ pub fn help_command() {
     let delete = "delete | d".bright_cyan();
     let change = "change | ch".bright_cyan();
     let autoclean = "auto_clean | ac".bright_cyan();
+    let add_tags = "tags -a | at".bright_cyan();
+    let remove_tags = "tags -r | rt".bright_cyan();
     let exit = "exit | e".bright_cyan();
 
     println!("* {}: Lists the tasks that are currently on your list. Uncompleted and
@@ -97,9 +99,10 @@ to filter tasks, but some tasks are no longer as urgent.
   the specified task, or alternatively it will mark a task as incomplete if run on the
   same task.
 
-* {}: a command that allows you to filter your tasks. Running filter -fi allows you to filter
-by importance; While running filter -s allows you to filter by completion status. More filter
-methods may be added in the future.
+* {}: a command that allows you to filter your tasks.
+Running filter -fi allows you to filter by importance.
+While running filter -s allows you to filter by completion status.
+Running filter -t allows you to filter by tags. This shows all tasks that have those tags.
 
 * {}: Cleans up your completed tasks. If auto_clean is set to true, the program
 will clean the completed tasks when the program exits. To set auto_clean, just run
@@ -116,8 +119,13 @@ the program handles the rest!
 * {}: Changes your current list. Running changes allows you to switch your current list so you can
 use a different one.
 
+* {}: Allows you to add tags to the task you select.
+
+* {}: Allows you to remove tags from the task you select.
+
 * {}: Exits the program. If auto_clean is enabled, it will automatically delete
-completed tasks.", list, list_hidden, add, remove, importance, status, filter ,clean, autoclean, create, delete, change, exit);
+completed tasks.", list, list_hidden, add, remove, importance, status, filter ,clean, autoclean,
+            add_tags, remove_tags ,create, delete, change, exit);
 
 }
 
@@ -193,20 +201,6 @@ pub fn change_status_command(mut todo_list: &mut Vec<Todo>, current_list : &Path
         }
     }
 }
-
-impl TagList<usize> for &&mut Vec<Todo> {
-    fn find(&self, name : &str) -> Option<usize> {
-        if is_full_name(self, name) {
-            let index = find_task_by_name(self, name);
-            index
-        } else {
-            let index = find_task_by_partial_name(self, name);
-            index
-        }
-    }
-}
-
-
 pub fn filter_importance_command(todo_list : Vec<Todo>) {
     println!("Please input an integer between 1-4");
     let importance : i32 = read!();
@@ -226,21 +220,27 @@ pub fn filter_by_tags(todo_list : Vec<Todo>) {
     };
 
     let tags_list = split_input(&tags);
+    let mut matching_tasks = Vec::new();
 
-    let mut index = 0;
-    for tags in tags_list {
-        match todo_list[index].get_tag_list().try_borrow() {
+    for tags in 0..todo_list.len() {
+        match todo_list[tags].get_tag_list().try_borrow() {
             Ok(task_tags) => {
-                if task_tags.contains(&tags.to_string()) {
-                    println!("{}", todo_list[index]);
-                }
+                tags_list.iter().map(|tag| {
+                    if task_tags.contains(&tag.to_string()) {
+                        matching_tasks.push(&todo_list[tags]);
+                    }
+                }).collect()
             }
             Err(e) => {
                 eprintln!("Could not get the tags list: {e:?}");
                 return;
             }
         };
-        index += 1;
+    }
+
+    println!("Matching tasks:");
+    for task in matching_tasks {
+        println!("{}", task);
     }
 
 }
@@ -375,7 +375,7 @@ fn remove_tag_from_task(todo_list : Vec<Todo>, current_list : &PathBuf) {
 pub fn delete_file_command(file_path : &PathBuf, current_list : &PathBuf) {
 
     println!("Please input the list you'd like to delete (Leave blank to delete the default list): ");
-    let mut list_name = input().unwrap().to_lowercase();
+    let list_name = input().unwrap().to_lowercase();
 
     delete_file(file_path, list_name.trim().to_string(), current_list);
 }
@@ -460,7 +460,7 @@ fn initialize_default_list_if_needed(task_directory: &Path, current_list_file: &
 
 pub fn run_cli() {
     let home_dir = dir::home_dir().unwrap();
-    let mut full_dir = home_dir.join(".keeptrack-cli").join("lists");
+    let full_dir = home_dir.join(".keeptrack-cli").join("lists");
 
     let file_path = &full_dir.clone();
 
