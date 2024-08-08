@@ -4,9 +4,11 @@ mod list_maintenance;
 mod list_features;
 mod todo_struct;
 mod test;
+mod not_in_list_error;
 
 use std::fs::File;
 use crate::list_features::*;
+use crate::user_handling::input;
 
 fn main() {
 
