@@ -1,7 +1,7 @@
-use std::cell::{Ref, RefCell};
+use std::cell::{RefCell};
+use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use crate::list_maintenance::{find_task_by_name, find_task_by_partial_name, is_full_name};
-use crate::not_in_list_error::NotFoundInList;
 
 #[derive(Serialize, Deserialize, Clone ,Debug, PartialEq)]
 pub struct Todo {
@@ -58,6 +58,13 @@ impl Todo {
     }
     pub fn get_tag_list(&self) -> &RefCell<Vec<String>> {
         &self.tags
+    }
+}
+
+impl Display for Todo {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "(task: {}, status: {}, importance: {}, hidden: {})", self.task, self.is_completed
+               ,self.importance, self.hidden)
     }
 }
 

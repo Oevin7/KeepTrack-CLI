@@ -1,6 +1,5 @@
 use std::ffi::OsStr;
-use std::{fs, io};
-use std::cell::{Ref, RefCell};
+use std::{fs};
 use std::path::PathBuf;
 use crate::file_management::{read_and_return, write_file};
 use crate::not_in_list_error::NotFoundInList;

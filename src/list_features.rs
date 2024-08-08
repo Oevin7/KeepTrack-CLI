@@ -214,6 +214,37 @@ pub fn filter_importance_command(todo_list : Vec<Todo>) {
     filter_tasks_by_importance(todo_list, importance);
 }
 
+pub fn filter_by_tags(todo_list : Vec<Todo>) {
+    println!("Enter tags for the task you'd like to find (space seperated):");
+
+    let tags = match input() {
+        Some(tag) => tag.to_lowercase(),
+        None => {
+            eprintln!("Could not get input, please try again.");
+            return;
+        }
+    };
+
+    let tags_list = split_input(&tags);
+
+    let mut index = 0;
+    for tags in tags_list {
+        match todo_list[index].get_tag_list().try_borrow() {
+            Ok(task_tags) => {
+                if task_tags.contains(&tags.to_string()) {
+                    println!("{}", todo_list[index]);
+                }
+            }
+            Err(e) => {
+                eprintln!("Could not get the tags list: {e:?}");
+                return;
+            }
+        };
+        index += 1;
+    }
+
+}
+
 fn hide_task_command(mut todo_list: Vec<Todo>, current_list : &PathBuf) {
     println!("Which task would you like to hide?");
     let task = input().unwrap();
@@ -250,7 +281,7 @@ fn add_tags_to_task(todo_list : Vec<Todo>, current_list : &PathBuf) {
             println!("Enter tags (space seperated):");
 
             let tags = match input() {
-                Some(tag) => tag,
+                Some(tag) => tag.to_lowercase(),
                 None => {
                     eprintln!("Could not get input, please try again.");
                     return;
@@ -515,12 +546,13 @@ fn execute_commands(command: String, mut todo_list: Vec<Todo>, file_path : &Path
                 Likely a file error"),
         "filter -fi" | "fi" => filter_importance_command(todo_list),
         "filter -s" | "fs" => filter_tasks_by_status(todo_list),
+        "filter -t" | "ft" => filter_by_tags(todo_list),
         "hide" | "hd" => hide_task_command(todo_list, current_list),
         "delete" | "d" => delete_file_command(file_path, current_list),
         "create" | "cr" => create_file_command(file_path),
         "change" | "ch" => change_file_command(file_path),
-        "tags" | "t" => add_tags_to_task(todo_list, current_list),
-        "remove tags" | "rt" => remove_tag_from_task(todo_list, current_list),
+        "tags -a" | "at" => add_tags_to_task(todo_list, current_list),
+        "tags -r" | "rt" => remove_tag_from_task(todo_list, current_list),
         _ => {
             eprintln!("You made an incorrect input! Please try again :)");
         }
