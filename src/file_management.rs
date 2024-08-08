@@ -19,7 +19,6 @@ pub fn read_and_return(path_to_file : &PathBuf) -> Result<Vec<Todo>, io::Error> 
 }
 
 //Writes the new/updated list to a new or existing file
-//Writes the new/updated list to a new or existing file
 pub fn write_file(list : &Vec<Todo>, file_path : &PathBuf) -> Result<(), io::Error> {
 
     let existing_tasks = list;
@@ -41,6 +40,7 @@ pub fn write_file(list : &Vec<Todo>, file_path : &PathBuf) -> Result<(), io::Err
 
 }
 
+
 pub fn delete_file(path_to_file : &PathBuf, file_name : String, current_list : &PathBuf) {
     let file_extension = ".json";
     let file = file_name.clone() + &file_extension;
@@ -59,7 +59,7 @@ pub fn delete_file(path_to_file : &PathBuf, file_name : String, current_list : &
 }
 
 pub fn auto_clean_flag(auto_clean: bool) -> bool {
-    let flag = !auto_clean;
+    let mut flag = !auto_clean;
 
     flag
 
@@ -89,8 +89,16 @@ pub fn create_file(path_to_file : &PathBuf, file_name : String) {
 
 //Writes values to a flag file, which allows for user flags to be saved
 pub fn write_flag_values(autoclean : bool) -> Result<(), io::Error> {
-    let mut file = File::create("flag_values.txt")?;
-    file.write_all(autoclean.to_string().as_bytes())?;
+
+    let file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open("flag_values.txt");
+
+    writeln!(file?, "{}", autoclean)?;
+
+    println!("Autoclean was set to {}", autoclean);
 
     Ok(())
 

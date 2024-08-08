@@ -11,9 +11,11 @@ colored = "2.1.0"
 dir = "0.1.2"
 rustyline = "14.0.0"
 rand = "0.7.3"
+log = "0.4.21"
 
 [target.x86_64-pc-windows-gnu]
 linker = "x86_64-w64-mingw32-gcc"
 
 [target.i686-pc-windows-gnu]
 linker = "i686-w64-mingw32-gcc"
+
